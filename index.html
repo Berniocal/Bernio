@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Bernio">
+<title>Bernio</title>
+<style>
+  :root{
+    --case:#203347; --lcd:#e9f0da; --lcd-text:#112016;
+    --num:#d2d6dd; --num-text:#17202a;
+    --fn:#2a3b4f;  --fn-text:#f7fbff;
+    --pink:#f0a9ba; --pink2:#f4c5d0; --oval:#e8edf3; --shift:#ffd447; --alpha:#ff6b6b;
+    --gap:10px; --r:18px; --shadow:0 2px 0 rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{
+    background:#0f1722;display:grid;place-items:center;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    color:#fff; overscroll-behavior:contain;
+  }
+  .calc{
+    width:min(480px,100vw);
+    height:auto;
+    background:linear-gradient(#203347,#1a2c3d);
+    border-radius:28px; padding:18px 14px 20px;
+    box-shadow:0 24px 50px rgba(0,0,0,.55), inset 0 6px 0 rgba(255,255,255,.06);
+    display:grid; grid-template-rows:auto auto; gap:12px;
+    transform-origin: top center;
+  }
+  .display{
+    background:var(--lcd); color:var(--lcd-text); border-radius:10px;
+    padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    display:grid; grid-template-rows:auto auto; gap:6px;
+  }
+  #exprWrap{
+    font-size:clamp(24px,6.2vw,33px);
+    line-height:1.6;
+    min-height:1.8em;
+    white-space:nowrap;
+    overflow:hidden;
+    position:relative;
+  }
+  #expr{display:inline-block; white-space:nowrap; padding-right:8px;}
+  .line2{display:flex; align-items:center; gap:8px}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .badge{background:#243444;border:1px solid #2e455a;color:#e7fbff;border-radius:7px;padding:2px 6px;font-size:.9em;user-select:none}
+  .badge.auto{display:none}.badge.auto.on{display:inline-flex}.badge.always{display:inline-flex}
+  .res{margin-left:auto; font-size:clamp(24px,6.6vw,34px); font-weight:700; text-align:right; min-width:40%}
+  .res .sci .times, .res .sci .ten{ font-size:.8em; }
+  .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
+
+  .boards{display:grid;grid-template-rows:auto auto;gap:12px}
+  .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);}
+  .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);}
+
+  .oval{background:var(--oval);color:#263445;border-radius:18px;padding:.6em .2em;text-align:center;font-weight:700;box-shadow:var(--shadow);touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
+  #btnSHIFT{color:var(--shift)} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}
+  .replay{background:#bfcbd9;color:#3b4b5c;border-radius:999px;font-size:20px}
+  .span2{grid-row:span 2}
+
+  .key{position:relative;border:none;border-radius:var(--r);padding:1.05em .3em .8em;text-align:center;box-shadow:var(--shadow);font-size:clamp(15px,3.2vw,19px);user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
+  .key:active{transform:translateY(1px)}
+  .num{background:var(--num);color:var(--num-text)} .fn{background:var(--fn);color:var(--fn-text)}
+  .pink{background:var(--pink);color:#3b1c26} .pink.soft{background:var(--pink2)}
+  .legend{position:absolute;top:6px;left:8px;font-size:.72em;color:#b08c00;opacity:.9;pointer-events:none}
+  .calc.shift-on .legend{color:var(--shift)}
+  .main{display:block}
+  .botgrid .key{padding:.85em .25em .6em;font-size:clamp(22px,7.2vw,34px)}
+  .root{position:relative;display:inline-block;padding-left:.05em}
+  .root .rad{display:inline-block;padding-left:.2em;margin-left:.05em;border-top:2px solid currentColor;line-height:1}
+  .root small{font-size:.7em;vertical-align:super;margin-right:.05em}
+  .root.small .rad{border-top-width:1.6px}
+  .caret{display:inline-block;width:.7ch;text-align:center;animation:blink 1s step-end infinite;font-weight:700}
+  @keyframes blink{50%{opacity:0}} sup{font-size:.7em}
+</style>
+</head>
+<body>
+<div class="calc" id="calc">
+  <!-- DISPLEJ -->
+  <div class="display">
+    <div id="exprWrap"><div id="expr"></div></div>
+    <div class="line2">
+      <div class="badges">
+        <span class="badge auto" id="bShift">SHIFT</span>
+        <span class="badge auto" id="bHyp">HYP</span>
+        <span class="badge always" id="bDRG">DEG</span>
+        <span class="badge auto" id="bDMS">DMS</span>
+        <span class="badge auto" id="bENG">ENG</span>
+        <span class="badge auto" id="bMem">M</span>
+      </div>
+      <span class="res" id="res"></span>
+    </div>
+  </div>
+
+  <!-- HORNÍ 6×5 -->
+  <div class="boards">
+    <div class="topgrid">
+      <button class="oval" id="btnSHIFT">SHIFT</button>
+      <button class="oval" id="btnALPHA">ALPHA</button>
+      <button class="oval replay span2" id="btnLeft">◀</button>
+      <button class="oval replay span2" id="btnRight">▶</button>
+      <button class="oval" id="btnMODE"><span class="legend">CLR</span><span class="main">MODE</span></button>
+      <button class="oval" id="btnFS">⛶</button>
+
+      <button class="key fn" id="btnInv"><span class="legend">x!</span><span class="main">x⁻¹</span></button>
+      <button class="key fn" id="btnComb"><span class="legend">nPr</span><span class="main">nCr</span></button>
+      <button class="key fn" id="btnPolRec"><span class="legend">Rec(</span><span class="main">Pol(</span></button>
+      <button class="key fn" id="btnPow3"><span class="legend"><span class="root small"><small>3</small>√<span class="rad">x</span></span></span><span class="main">x³</span></button>
+
+      <button class="key fn" id="btnFracKey"><span class="legend">d/c</span><span class="main">a b/c</span></button>
+      <button class="key fn" id="btnSqrt"><span class="main"><span class="root">√<span class="rad">x</span></span></span></button>
+      <button class="key fn" id="btnPow2"><span class="main">x²</span></button>
+      <button class="key fn" id="btnPow"><span class="legend"><span class="root small"><small>y</small>√<span class="rad">x</span></span></span><span class="main">^</span></button>
+      <button class="key fn" data-fn="log"><span class="legend">10ˣ</span><span class="main">log</span></button>
+      <button class="key fn" data-fn="ln"><span class="legend">eˣ</span><span class="main">ln</span></button>
+
+      <button class="key fn" id="btnNeg"><span class="main">(−)</span></button>
+      <button class="key fn" id="btnDMSsym"><span class="main">° ′ ″</span></button>
+      <button class="key fn" id="btnHYP"><span class="main">hyp</span></button>
+      <button class="key fn" data-trig="sin"><span class="legend">sin⁻¹</span><span class="main">sin</span></button>
+      <button class="key fn" data-trig="cos"><span class="legend">cos⁻¹</span><span class="main">cos</span></button>
+      <button class="key fn" data-trig="tan"><span class="legend">tan⁻¹</span><span class="main">tan</span></button>
+
+      <button class="key fn" id="btnRCLSTO"><span class="legend">STO</span><span class="main">RCL</span></button>
+      <button class="key fn" id="btnENG"><span class="main">ENG</span></button>
+      <button class="key fn" data-ins="(" id="btnParL"><span class="main">(</span></button>
+      <button class="key fn" data-ins=")" id="btnParR"><span class="main">)</span></button>
+      <button class="key fn" data-ins="," id="btnComma"><span class="main">,</span></button>
+      <button class="key fn" id="btnMpm"><span class="legend">M−</span><span class="main">M+</span></button>
+    </div>
+
+    <!-- DOLNÍ 5×4 -->
+    <div class="botgrid">
+      <button class="key num" data-ins="7"><span class="main">7</span></button>
+      <button class="key num" data-ins="8"><span class="main">8</span></button>
+      <button class="key num" data-ins="9"><span class="main">9</span></button>
+      <button class="key pink" data-act="del"><span class="legend">INS</span><span class="main">DEL</span></button>
+      <button class="key pink soft" data-act="ac"><span class="main">AC</span></button>
+
+      <button class="key num" data-ins="4"><span class="main">4</span></button>
+      <button class="key num" data-ins="5"><span class="main">5</span></button>
+      <button class="key num" data-ins="6"><span class="main">6</span></button>
+      <button class="key num" data-ins="×"><span class="main">×</span></button>
+      <button class="key num" data-ins="÷"><span class="main">÷</span></button>
+
+      <button class="key num" data-ins="1"><span class="main">1</span></button>
+      <button class="key num" data-ins="2"><span class="main">2</span></button>
+      <button class="key num" data-ins="3"><span class="main">3</span></button>
+      <button class="key num" data-ins="+"><span class="main">+</span></button>
+      <button class="key num" data-ins="−"><span class="main">−</span></button>
+
+      <button class="key num" id="btn0"><span class="legend">Rnd</span><span class="main">0</span></button>
+      <button class="key num" id="btnDot"><span class="legend">Ran#</span><span class="main">.</span></button>
+      <button class="key num" id="btnEXP"><span class="legend">π</span><span class="main">EXP</span></button>
+      <button class="key num" id="btnAns"><span class="legend">DRG▶</span><span class="main">Ans</span></button>
+      <button class="key num" id="btnEq"><span class="legend">%</span><span class="main">=</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== drobné utily ===== */
+const qs=s=>document.querySelector(s);
+function onPD(el,fn){ el.addEventListener('pointerdown',fn,{passive:true}); }
+function onPDAll(sel,fn){ document.querySelectorAll(sel).forEach(el=>onPD(el,()=>fn(el))); }
+/* === autopřizpůsobení výšce v ne-fullscreenu === */
+const calcBox = document.getElementById('calc');
+function isFS(){ const d=document; return !!(d.fullscreenElement||d.webkitFullscreenElement); }
+
+function fitToViewport(){
+  if(isFS()){ 
+    calcBox.style.transform='scale(1)';
+    calcBox.style.marginTop='';
+    return;
+  }
+  const vv = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const cs = getComputedStyle(document.body);
+  const avail = vv - parseFloat(cs.paddingTop||0) - parseFloat(cs.paddingBottom||0);
+
+  calcBox.style.transform='scale(1)';
+  calcBox.style.marginTop='';
+  const need = calcBox.getBoundingClientRect().height;
+
+  const s = Math.min(1, avail / need);
+  if(s < 1){
+    calcBox.style.transform = `scale(${s})`;
+    const extra = (avail - need*s)/2;
+    calcBox.style.marginTop = `${Math.max(0, extra)}px`;
+  }
+}
+window.addEventListener('resize', fitToViewport);
+window.addEventListener('orientationchange', fitToViewport);
+
+/* ===== stav ===== */
+const exprEl=qs('#expr'), resEl=qs('#res');
+const bShift=qs('#bShift'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem');
+
+let state={ raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
+            dmsDisplay:false, frac:false, fracMixed:true, memory:0, memOn:false,
+            lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
+            modePick:false, repeat:null };
+
+/* ===== pretty + caret, auto scroll kurzoru ===== */
+function prettySegments(raw){
+  const segs=[]; let i=0; const push=(h,l)=>segs.push({html:h,len:l});
+  while(i<raw.length){
+    if(raw.startsWith('pow10(',i)){ push('10^(',6); i+=6; continue; }
+    if(raw.startsWith('exp(',i)){   push('e^(',4);   i+=4; continue; }
+    if(raw.startsWith('asin(',i)){  push('sin<sup>−1</sup>(',5); i+=5; continue; }
+    if(raw.startsWith('acos(',i)){  push('cos<sup>−1</sup>(',5); i+=5; continue; }
+    if(raw.startsWith('atan(',i)){  push('tan<sup>−1</sup>(',5); i+=5; continue; }
+    if(raw.startsWith('sqrt(',i)){  push('√(',5); i+=5; continue; }
+    if(raw.startsWith('cbrt(',i)){  push('∛(',5); i+=5; continue; }
+    if(raw.startsWith('root(',i)){
+      let j=i+5,y=''; while(j<raw.length&&/[0-9.]/.test(raw[j])) y+=raw[j++];
+      if(raw[j]===','){ push(y+'√(', j-i+1); i=j+1; continue; }
+    }
+    if(raw[i]==='^' && raw[i+1]==='('){
+      let j=i+2; while(j<raw.length && raw[j]!==')') j++;
+      if(j<raw.length){ const expo=raw.slice(i+2,j).replace(/-/g,'−'); push('<sup>'+expo+'</sup>', j-i+1); i=j+1; continue; }
+    }
+    const ch=raw[i]; const pretty = ch==='*'?'×': ch==='/'?'÷': ch==='-'?'−': ch;
+    push(pretty,1); i++;
+  }
+  return segs;
+}
+function scrollToCaret(){
+  const wrap=document.getElementById('exprWrap');
+  const c=wrap.querySelector('.caret');
+  if(!c) return;
+  const wr=wrap.getBoundingClientRect();
+  const cr=c.getBoundingClientRect();
+  const pad=8;
+  if(cr.right>wr.right-pad) wrap.scrollLeft += (cr.right - wr.right + pad);
+  else if(cr.left<wr.left+pad) wrap.scrollLeft -= (wr.left - cr.left + pad);
+}
+function render(){
+  bShift.classList.toggle('on',state.shift);
+  bHyp.classList.toggle('on',state.hyp);
+  bENG.classList.toggle('on',state.eng);
+  bDMS.classList.toggle('on',state.dmsDisplay);
+  bMem.classList.toggle('on',state.memOn);
+  bDRG.textContent=state.drg;
+
+  if(state.modePick){
+    exprEl.innerHTML = '<span style="opacity:.9">1&nbsp;DEG&nbsp;&nbsp;&nbsp;2&nbsp;RAD&nbsp;&nbsp;&nbsp;3&nbsp;GRAD</span>';
+    resEl.textContent = '';
+    return;
+  }
+
+  const segs=prettySegments(state.raw);
+  let out='', count=0, placed=false;
+  for(const s of segs){
+    if(!placed && state.cursor<=count){ out+='<span class="caret">_</span>'; placed=true; }
+    out+=s.html; count+=s.len;
+  }
+  if(!placed) out+='<span class="caret">_</span>';
+  exprEl.innerHTML = out;
+
+  resEl.innerHTML = state.resultShown ? state.resultStr : '';
+
+  scrollToCaret();
+}
+
+function clearForNewEntry(){ if(state.resultShown && !state.editAfterResult){ state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0; } }
+function insRaw(txt){ clearForNewEntry(); state.raw=state.raw.slice(0,state.cursor)+txt+state.raw.slice(state.cursor); state.cursor+=txt.length; render(); }
+
+/* SMART-DEL bloky */
+function smartDeleteUnit(){
+  const wrap=document.getElementById('exprWrap');
+  if(state.cursor>0 && state.raw[state.cursor-1]==='('){
+    let j=state.cursor-2;
+    while(j>=0 && /[A-Za-z0-9_#]/.test(state.raw[j])) j--;
+    const start=j+1;
+    if(start<state.cursor-1){
+      state.raw = state.raw.slice(0,start) + state.raw.slice(state.cursor);
+      state.cursor = start;
+      wrap.scrollLeft=Math.max(0,wrap.scrollLeft-20);
+      return true;
+    }
+  }
+  return false;
+}
+function smartDeleteRootComma(){
+  if(!(state.cursor>0 && state.raw[state.cursor-1]===',')) return false;
+  let p = state.cursor-2;
+  while(p>=0 && /[0-9.+\-Ee]/.test(state.raw[p])) p--;
+  if(p>=0 && state.raw[p]==='(' && p>=4 && state.raw.slice(p-4,p)==='root'){
+    const y = state.raw.slice(p+1, state.cursor-1);
+    state.raw = state.raw.slice(0, p-4) + y + state.raw.slice(state.cursor);
+    state.cursor = (p-4) + y.length;
+    return true;
+  }
+  return false;
+}
+
+function back(){
+  if(smartDeleteRootComma()){ render(); return; }
+  if(smartDeleteUnit()){ render(); return; }
+  if(state.resultShown && !state.editAfterResult){
+    state.resultShown=false; state.resultStr=''; render(); return;
+  }
+  if(state.cursor<=0){ render(); return; }
+  state.raw = state.raw.slice(0,state.cursor-1)+state.raw.slice(state.cursor);
+  state.cursor--; render();
+}
+
+function moveCursor(step){ if(state.resultShown) state.editAfterResult=true; state.cursor=Math.max(0,Math.min(state.raw.length,state.cursor+step)); render(); }
+function ac(hard=false){ state.raw=''; state.cursor=0; if(hard){ state.ans=0; } state.resultShown=false; state.resultStr=''; state.lastRes=null; state.editAfterResult=false; document.getElementById('exprWrap').scrollLeft=0; render(); }
+
+/* ovládací prvky */
+onPD(qs('#btnSHIFT'), ()=>{
+  if(state.modePick){ state.modePick = false; }
+  state.shift = !state.shift;
+  render();
+});
+
+onPD(qs('#btnMODE'), ()=>{ 
+  if(state.shift){ state.shift=false; state.ans=0; ac(true); return; }
+  state.modePick = true;
+  state.resultShown = false;
+  state.resultStr = '';
+  render();
+});
+
+onPD(qs('#btnALPHA'), ()=>{});
+onPD(qs('#btnLeft'),  ()=> moveCursor(-1));
+onPD(qs('#btnRight'), ()=> moveCursor(+1));
+
+onPD(qs('#btnFS'), ()=>{ 
+  const doc=document, el=doc.documentElement;
+  const inFS=doc.fullscreenElement||doc.webkitFullscreenElement;
+  const req=el.requestFullscreen||el.webkitRequestFullscreen;
+  const exit=doc.exitFullscreen||doc.webkitExitFullscreen||(()=>Promise.resolve());
+  if(inFS){ try{ exit.call(doc); }catch(e){} }
+  else{
+    if(req){ try{ const p=req.call(el); if(p&&p.catch)p.catch(()=>window.scrollTo(0,1)); }catch(e){ window.scrollTo(0,1); } }
+    else { window.scrollTo(0,1); }
+  }
+  setTimeout(fitToViewport, 120);
+});
+
+/* funkční klávesy */
+onPD(qs('#btnInv'), ()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; if(state.cursor>0 && /[0-9\)]/.test(state.raw[state.cursor-1])) insRaw('!'); else insRaw('fact(');} else insRaw('^(-1)'); });
+
+function insertCP(op){ if(state.resultShown && !state.editAfterResult) return; if(state.cursor===0 || !/[0-9]/.test(state.raw[state.cursor-1])) return; insRaw(op); }
+onPD(qs('#btnComb'),()=>{ if(state.shift){ state.shift=false; insertCP('P'); } else insertCP('C'); });
+
+onPD(qs('#btnPolRec'),()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; insRaw('Rec(');} else insRaw('Pol('); });
+onPD(qs('#btnPow3'),()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; insRaw('cbrt(');} else insRaw('^(3)'); });
+onPD(qs('#btnFracKey'), ()=>{
+  if(state.resultShown){
+    if(state.shift){
+      state.shift=false;
+      state.frac = true;
+      state.fracMixed = false;
+    }else{
+      if(!state.frac){ state.frac=true; state.fracMixed=true; }
+      else if(state.frac && state.fracMixed){ state.frac=false; }
+      else { state.frac=true; state.fracMixed=true; }
+    }
+    updateResultView(); render();
+    return;
+  }
+  clearForNewEntry();
+  state.shift=false;
+  insRaw('∟');
+});
+
+onPD(qs('#btnSqrt'),()=>{ clearForNewEntry(); insRaw('sqrt('); });
+onPD(qs('#btnPow2'),()=>{ clearForNewEntry(); insRaw('^(2)'); });
+
+onPD(qs('#btnPow'), ()=>{ 
+  if(state.shift){
+    state.shift=false;
+    let i=state.cursor-1,start=i+1; while(i>=0&&/[0-9.]/.test(state.raw[i])) i--; start=i+1;
+    const y=state.raw.slice(start,state.cursor);
+    if(y){ state.raw=state.raw.slice(0,start)+state.raw.slice(state.cursor); state.cursor=start; insRaw('root('+y+','); }
+    else  insRaw('root(');
+  }else{ opAfterResult('^'); }
+});
+onPD(qs('#btnHYP'), ()=>{ state.hyp=!state.hyp; render(); });
+onPD(qs('#btnNeg'), ()=> insRaw('−'));
+
+onPD(qs('#btnDMSsym'),()=>{ if(state.resultShown && !state.editAfterResult){ state.dmsDisplay=!state.dmsDisplay; updateResultView(); } else { if(state.shift&&state.hyp){ state.shift=false; insRaw('″'); } else if(state.shift){ state.shift=false; insRaw('′'); } else insRaw('°'); }});
+
+onPD(qs('#btnRCLSTO'),()=>{ if(state.shift){ state.shift=false; state.memory= +state.ans || 0; state.memOn=state.memory!==0; render(); } else insRaw(String(state.memory)); });
+onPD(qs('#btnENG'),()=>{ state.eng=!state.eng; if(state.resultShown) updateResultView(); render(); });
+onPD(qs('#btnMpm'),()=>{ if(state.shift){ state.shift=false; state.memory -= (+state.ans||0); } else { state.memory += (+state.ans||0); } state.memOn=state.memory!==0; render(); });
+
+onPDAll('[data-fn]', el=>{ clearForNewEntry(); const f=el.dataset.fn; if(f==='log'){ if(state.shift){ state.shift=false; insRaw('pow10('); } else insRaw('log('); } if(f==='ln'){ if(state.shift){ state.shift=false; insRaw('exp('); } else insRaw('ln('); }});
+
+onPDAll('[data-trig]', el=>{
+  clearForNewEntry();
+  const base=el.dataset.trig; let raw='';
+  if(state.shift && !state.hyp){ raw='a'+base+'('; }
+  else if(state.shift && state.hyp){ raw='a'+base+'h('; }
+  else if(state.hyp){ raw=base+'h('; }
+  else{ raw=base+'('; }
+  state.shift=false; insRaw(raw);
+});
+
+onPD(qs('#btn0'),  ()=>{ if(state.shift){ state.shift=false; insRaw('Rnd(');} else insRaw('0'); });
+onPD(qs('#btnDot'),()=>{ if(state.shift){ state.shift=false; insRaw('RAN#()');} else insRaw('.'); });
+onPD(qs('#btnEXP'),()=>{ if(state.shift){ state.shift=false; insRaw('π'); } else insRaw('E'); });
+onPD(qs('#btnAns'),()=>{ if(state.shift){ state.shift=false; state.drg = state.drg==='DEG'?'RAD':state.drg==='RAD'?'GRAD':'DEG'; if(state.resultShown) updateResultView(); render(); } else insRaw('Ans'); });
+onPD(qs('#btnEq'), ()=>{ 
+  if(state.shift){ state.shift=false; insRaw('%'); return; }
+  if(state.resultShown && !state.editAfterResult && state.repeat){
+    const sym = prettyOp(state.repeat.op);
+    state.raw = 'Ans' + sym + String(state.repeat.rhs);
+    state.cursor = state.raw.length;
+  }
+  evaluate();
+});
+
+onPDAll('[data-act]', el=>{ const a=el.dataset.act; if(a==='del') back(); else if(a==='ac') ac(); });
+function handleModePick(d){
+  if(!state.modePick) return false;
+
+  if(d==='1')      state.drg='DEG';
+  else if(d==='2') state.drg='RAD';
+  else if(d==='3') state.drg='GRAD';
+  else return true;
+
+  state.modePick = false;
+  state.resultShown = false;
+  state.resultStr = '';
+  render();
+  return true;
+}
+
+function opAfterResult(sym){
+  if(state.resultShown && !state.editAfterResult){
+    state.resultShown=false; state.resultStr='';
+    state.raw='Ans'+sym; state.cursor=state.raw.length; render(); 
+  }else{
+    insRaw(sym);
+  }
+}
+onPDAll('[data-ins]', el=>{
+  const t=el.dataset.ins;
+  if(state.modePick && /^[0-9]$/.test(t)){ handleModePick(t); return; }
+
+  if(t==='+'||t==='−'||t==='×'||t==='÷'){ opAfterResult(t); }
+  else if(t==='('||t===')'||t===','||/^[0-9.]$/.test(t)){ insRaw(t); }
+  else { insRaw(t); }
+});
+function prettyOp(op){ return op==='+'?'+': op==='-'?'−': op==='*'?'×': op==='/'?'÷': op; }
+
+function captureRepeat(tokens){
+  const n = tokens.length;
+  if(n<3 || tokens[n-1].type!=='num'){ state.repeat=null; return; }
+  let i = n-2;
+  while(i>=0 && !(tokens[i].type==='op' && ['+','-','*','/','^'].includes(tokens[i].op))) i--;
+  if(i<0){ state.repeat=null; return; }
+  state.repeat = { op: tokens[i].op, rhs: tokens[n-1].value };
+}
+
+/* ===== parser ===== */
+function normalizeInput(s){
+  s=s.replace(/\s+/g,'').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+  s=autoCloseUnary(s);
+  s=autoCloseRoot(s);
+
+  const sep    = '[∟ɹL]';
+  const mixRe  = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
+  const fracRe = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
+
+  let prev;
+  do {
+    prev = s;
+    s = s.replace(mixRe,  (_m, pre, a, b, c) => `${pre}(${a}+(${b})/(${c}))`);
+  } while (prev !== s);
+
+  s = s.replace(fracRe, (_m, pre, n, d) => `${pre}((${n})/(${d}))`);
+  s = s.replace(/\s+/g,'');
+
+  s=s.replace(/sin\^\(-1\)\(/g,'asin(').replace(/cos\^\(-1\)\(/g,'acos(').replace(/tan\^\(-1\)\(/g,'atan(');
+  s=s.replace(/Ans/g,String(state.ans)).replace(/π/g,String(Math.PI));
+  s=s.replace(/(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′\s*(\d+(?:\.\d+)?)″/g,
+    (_,d,m,sec)=>String(dmsToDeg(parseFloat(d),parseFloat(m),parseFloat(sec))));
+  s=s.replace(/(-?\d+(?:\.\d+)?)C(-?\d+(?:\.\d+)?)/g,'nCr($1,$2)');
+  s=s.replace(/(-?\d+(?:\.\d+)?)P(-?\d+(?:\.\d+)?)/g,'nPr($1,$2)');
+  return s;
+}
+
+function autoCloseUnary(s){
+  const unary=['sin','cos','tan','asin','acos','atan','sinh','cosh','tanh','asinh','acosh','atanh',
+               'sqrt','cbrt','log','ln','exp','pow10','abs','ceil','floor','inv','Rnd'];
+  let out='', i=0;
+
+  while(i<s.length){
+    let name=null;
+    for(const n of unary){ if(s.startsWith(n+'(', i)){ name=n; break; } }
+    if(!name){ out+=s[i++]; continue; }
+
+    const open = i + name.length;
+
+    let depth=0, j=open;
+    if(s[open]==='('){
+      depth=1; j=open+1;
+      while(j<s.length && depth>0){
+        if(s[j]==='(') depth++;
+        else if(s[j]===')') depth--;
+        j++;
+      }
+      if(depth===0){ out += s.slice(i, j); i = j; continue; }
+    }
+
+    out += name+'(';
+    i = open+1;
+    let k=i;
+
+    if(s[k]=='+'||s[k]=='-') k++;
+    while(k<s.length && /[0-9.]/.test(s[k])) k++;
+    while(k<s.length && (s[k]==='°'||s[k]==='′'||s[k]==='″')) k++;
+    if((s[k]==='E'||s[k]==='e') && /[-+0-9]/.test(s[k+1])){
+      k++; if(s[k]=='+'||s[k]=='-') k++;
+      while(k<s.length && /[0-9]/.test(s[k])) k++;
+    }
+
+    if(k>=s.length){ out += s.slice(i,k)+')'; i=k; }
+    else if(s[k]===')'){ out += s.slice(i,k+1); i=k+1; }
+    else if('+-*/^,'.includes(s[k])){ out += s.slice(i,k)+')'+s[k]; i=k+1; }
+    else { out += s[i]; i++; }
+  }
+  return out;
+}
+
+function autoCloseRoot(s){
+  let out='', i=0;
+  while(i<s.length){
+    if(s.startsWith('root(', i)){
+      const open = i + 4;
+      let depth=1, j=open+1;
+      while(j<s.length && depth>0){
+        if(s[j]==='(') depth++;
+        else if(s[j]===')') depth--;
+        j++;
+      }
+      if(depth===0){ out += s.slice(i, j); i = j; continue; }
+
+      out += 'root(';
+      i = open+1;
+
+      let a=i;
+      if(s[a]=='+'||s[a]=='-') a++;
+      while(a<s.length && /[0-9.]/.test(s[a])) a++;
+      if((s[a]==='E'||s[a]==='e') && /[-+0-9]/.test(s[a+1])){
+        a++; if(s[a]=='+'||s[a]=='-') a++; while(a<s.length && /[0-9]/.test(s[a])) a++;
+      }
+      if(s[a]!==','){ out+=s[i]; i++; continue; }
+      out += s.slice(i, a+1);
+      i = a+1;
+
+      let b=i;
+      if(s[b]=='+'||s[b]=='-') b++;
+      while(b<s.length && /[0-9.]/.test(s[b])) b++;
+      if((s[b]==='E'||s[b]==='e') && /[-+0-9]/.test(s[b+1])){
+        b++; if(s[b]=='+'||s[b]=='-') b++; while(b<s.length && /[0-9]/.test(s[b])) b++;
+      }
+
+      if(b>=s.length){ out += s.slice(i,b) + ')'; i=b; }
+      else if(s[b]===')'){ out += s.slice(i,b+1); i=b+1; }
+      else if('+-*/^,'.includes(s[b])){ out += s.slice(i,b) + ')' + s[b]; i=b+1; }
+      else { out += s[i]; i++; }
+      continue;
+    }
+    out += s[i++];
+  }
+  return out;
+}
+
+function tokenize(s){
+  const t=[];let i=0;const dig=c=>/[0-9]/.test(c), lettr=c=>/[A-Za-z#]/.test(c);
+  while(i<s.length){
+    const c=s[i];
+    if(dig(c)||(c==='.'&&dig(s[i+1]))){
+      let j=i+1, num=c;
+      while(j<s.length&&/[0-9.]/.test(s[j])) num+=s[j++];
+      if((s[j]==='E'||s[j]==='e')&&/[-+0-9]/.test(s[j+1])){
+        num+=s[j++]; if(s[j]=='+'||s[j]=='-') num+=s[j++]; while(j<s.length&&/[0-9]/.test(s[j])) num+=s[j++];
+      }
+      t.push({type:'num',value:+num}); i=j; continue;
+    }
+    if(lettr(c)){ let j=i+1, id=c; while(j<s.length&&/[A-Za-z0-9_#]/.test(s[j])) id+=s[j++]; t.push({type:'id',value:id}); i=j; continue; }
+    if(c==='('||c===')'||c===','){ t.push({type:c}); i++; continue; }
+    if(c==='+'||c==='-'||c==='*'||c==='/'||c==='^'){ t.push({type:'op',op:c}); i++; continue; }
+    if(c==='!'||c==='%'){ t.push({type:'post',op:c}); i++; continue; }
+    throw Error('Neznámý znak: '+c);
+  }
+  return t;
+}
+function toRPN(tokens){
+  const out=[], ops=[], argc=[];
+  const prec={'unary-':5,'^':4,'*':3,'/':3,'mod':3,'+':2,'-':2,'!':6,'%':6};
+  const right={'^':1};
+  let prev='start';
+  for(const t of tokens){
+    if(t.type==='num'){ out.push(t); prev='num'; continue; }
+    if(t.type==='id'){
+      if(t.value==='mod'){
+        while(ops.length){
+          const top=ops[ops.length-1];
+          if(top.type==='op'&&( (prec[top.op]>prec.mod) || (prec[top.op]===prec.mod && !right[top.op]) )) out.push(ops.pop());
+          else break;
+        }
+        ops.push({type:'op',op:'mod'}); prev='op'; continue;
+      }
+      ops.push({type:'func',name:t.value}); prev='func'; continue;
+    }
+    if(t.type==='op'){
+      if(t.op==='-'&&(prev==='start'||prev==='op'||prev==='('||prev==='comma')){
+        const u={type:'op',op:'unary-'};
+        while(ops.length&&ops[ops.length-1].type==='op'&&prec[ops[ops.length-1].op]>prec[u.op]) out.push(ops.pop());
+        ops.push(u);
+      }else{
+        while(ops.length){
+          const top=ops[ops.length-1];
+          if(top.type==='op'&&(prec[top.op]>prec[t.op]||(prec[top.op]===prec[t.op]&&!right[top.op]))) out.push(ops.pop());
+          else break;
+        }
+        ops.push({type:'op',op:t.op});
+      }
+      prev='op'; continue;
+    }
+    if(t.type==='post'){
+      const p={type:'op',op:t.op==='!'?'!':'%post'};
+      while(ops.length&&ops[ops.length-1].type==='op'&&prec[ops[ops.length-1].op]>prec['!']) out.push(ops.pop());
+      ops.push(p); prev='post'; continue;
+    }
+    if(t.type==='('){ ops.push(t); argc.push(1); prev='('; continue; }
+    if(t.type===','){ while(ops.length&&ops[ops.length-1].type!=='(') out.push(ops.pop()); if(argc.length) argc[argc.length-1]++; prev='comma'; continue; }
+    if(t.type===')'){
+      while(ops.length&&ops[ops.length-1].type!=='(') out.push(ops.pop());
+      if(!ops.length) throw Error('Chybí "("');
+      ops.pop(); const n=argc.pop()||1;
+      if(ops.length&&ops[ops.length-1].type==='func'){ const f=ops.pop(); out.push({type:'func',name:f.name,argc:n}); }
+      prev=')'; continue;
+    }
+  }
+  while(ops.length){
+    const x=ops.pop();
+    if(x.type==='(') throw Error('Chybí ")"');
+    if(x.type==='func') out.push({type:'func',name:x.name,argc:1}); else out.push(x);
+  }
+  return out;
+}
+function evalRPN(rpn){
+  const st=[];
+  const toRad=v=>state.drg==='DEG'?v*Math.PI/180:state.drg==='GRAD'?v*Math.PI/200:v;
+  const fromRad=r=>state.drg==='DEG'?r*180/Math.PI:state.drg==='GRAD'?r*200/Math.PI:r;
+  const map={
+    sin:a=>Math.sin(toRad(a)), cos:a=>Math.cos(toRad(a)), tan:a=>Math.tan(toRad(a)),
+    asin:a=>fromRad(Math.asin(a)), acos:a=>fromRad(Math.acos(a)), atan:a=>fromRad(Math.atan(a)),
+    sinh:a=>Math.sinh(a), cosh:a=>Math.cosh(a), tanh:a=>Math.tanh(a),
+    asinh:a=>Math.asinh(a), acosh:a=>Math.acosh(a), atanh:a=>Math.atanh(a),
+    log:a=>Math.log10(a), ln:a=>Math.log(a), exp:a=>Math.exp(a),
+    sqrt:a=>Math.sqrt(a), cbrt:a=>Math.cbrt(a), root:(y,x)=>x**(1/y),
+    abs:a=>Math.abs(a), ceil:a=>Math.ceil(a), floor:a=>Math.floor(a), inv:a=>1/a,
+    pow10:a=>10**a, pow:(a,b)=>a**b, nCr:(n,r)=>comb(n,r), nPr:(n,r)=>perm(n,r),
+    gcd:(a,b)=>gcd(a,b), lcm:(a,b)=>lcm(a,b), mod:(a,b)=>mod(a,b),
+    'RAN#':()=>Math.random(), Rnd:a=>roundSig(a,10),
+    Pol:(x,y)=>({t:'pair',a:Math.hypot(x,y),b:fromRad(Math.atan2(y,x))}),
+    Rec:(r,th)=>{const rad=toRad(th);return{t:'pair',a:r*Math.cos(rad),b:r*Math.sin(rad)};},
+    DMS:a=>({t:'dms',v:a}),
+    fact:a=>fact(a)
+  };
+  for(const t of rpn){
+    if(t.type==='num'){ st.push(t.value); continue; }
+    if(t.type==='op'){
+      if(t.op==='unary-'){ st.push(-st.pop()); continue; }
+      if(t.op==='!'){ st.push(fact(st.pop())); continue; }
+      if(t.op==='%post'){ st.push(st.pop()/100); continue; }
+      const b=st.pop(), a=st.pop();
+      st.push(t.op==='+'?a+b:t.op==='-'?a-b:t.op==='*'?a*b:t.op==='/'?a/b:t.op==='^'?a**b:mod(a,b));
+      continue;
+    }
+    if(t.type==='func'){ const args=[]; for(let i=0;i<t.argc;i++) args.unshift(st.pop()); st.push(map[t.name](...args)); continue; }
+  }
+  if(st.length!==1) throw Error('Chybný výraz'); return st[0];
+}
+
+/* pomocné */
+function fact(n){ n=Math.round(n); if(n<0) return NaN; if(n>170) return Infinity; let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+function gcd(a,b){ a=Math.trunc(Math.abs(a)); b=Math.trunc(Math.abs(b)); if(a===0)return b; if(b===0)return a; while(b){ const t=b; b=a%b; a=t; } return a; }
+function lcm(a,b){ a=Math.trunc(a); b=Math.trunc(b); return a&&b?Math.abs(a*b)/gcd(a,b):0; }
+function mod(a,b){ if(b===0) return NaN; return a-b*Math.floor(a/b); }
+function comb(n,r){ n=Math.round(n); r=Math.round(r); if(r<0||n<0||r>n) return NaN; r=Math.min(r,n-r); let num=1,den=1; for(let i=1;i<=r;i++){ num*=n-r+i; den*=i; } return num/den; }
+function perm(n,r){ n=Math.round(n); r=Math.round(r); if(r<0||n<0||r>n) return NaN; let p=1; for(let i=0;i<r;i++) p*=(n-i); return p; }
+function roundSig(x,n=12){ if(!isFinite(x)) return x; if(x===0) return 0; const d=Math.ceil(Math.log10(Math.abs(x))); const p=n-d; const m=10**p; return Math.round(x*m)/m; }
+function stripZeros(s){ return s.replace(/(\.\d*?[1-9])0+$/,'$1').replace(/\.0+$/,'').replace(/^-0$/,'0'); }
+function toEngineering(x){
+  if(!isFinite(x)) return String(x);
+  if(x===0) return '0';
+  const e=Math.floor(Math.log10(Math.abs(x)));
+  const E=Math.floor(e/3)*3;
+  const m=x/10**E;
+  const mant = stripZeros(m.toPrecision(9));
+  return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${E}</sup></span>`;
+}
+function toScientificAuto(x){
+  if(!isFinite(x)) return String(x);
+  if(x===0) return '0';
+  let e = Math.floor(Math.log10(Math.abs(x)));
+  let m = x / 10**e;
+  let mant = stripZeros(m.toPrecision(9));
+  if(Math.abs(+mant) >= 10){
+    e += 1;
+    m /= 10;
+    mant = stripZeros(m.toPrecision(9));
+  }
+  return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${e}</sup></span>`;
+}
+function toFractionStr(x, mixed=true, maxDen=1e6){
+  if(!isFinite(x)) return String(x);
+  const sign = x<0 ? -1 : 1;
+  let a = Math.abs(x);
+  let w = Math.floor(a), f = a - w;
+  if(f === 0) return (sign<0?'-':'') + String(w);
+  let h1=1,h0=0,k1=0,k0=1,b=f;
+  while(true){
+    let A=Math.floor(b), h2=A*h1+h0, k2=A*k1+k0;
+    if(k2>maxDen) break;
+    h0=h1; k0=k1; h1=h2; k1=k2;
+    const diff=Math.abs(f - h1/k1);
+    if(diff<1e-12 || !isFinite(1/(b-A))) break;
+    b = 1/(b-A);
+  }
+  let num=h1, den=k1;
+  if(!mixed){ num = w*den + num; w = 0; }
+  const body = (w ? (w + ' ∟ ' + num + ' ∟ ' + den) : (num + ' ∟ ' + den));
+  return (sign<0?'-':'') + body;
+}
+function degToDMS(x){
+  const s=x<0?-1:1; x=Math.abs(x);
+  const d=Math.floor(x), mf=(x-d)*60, m=Math.floor(mf), sec=Math.round((mf-m)*60*1e6)/1e6;
+  return (s<0?'-':'')+d+'°'+m+'′'+stripZeros(String(sec))+'″';
+}
+function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/60+s/3600); }
+
+function formatNumWithOptions(v){
+  if(!isFinite(v)) return String(v);
+  const x = roundSig(v,12);
+  if(state.dmsDisplay) return degToDMS(x);
+  if(state.eng)        return toEngineering(x);
+  if(state.frac)       return toFractionStr(x,state.fracMixed);
+  const ax = Math.abs(x);
+  if(ax !== 0 && (ax >= 1e8 || ax < 1e-8)){
+    return toScientificAuto(x);
+  }
+  return stripZeros(x.toPrecision(12));
+}
+function updateResultView(){
+  if(!state.lastRes){ state.resultStr=''; state.resultShown=false; render(); return; }
+  if(state.lastRes.type==='num'){ state.resultStr = formatNumWithOptions(state.lastRes.v); }
+  else if(state.lastRes.type==='pair'){ state.resultStr = `(${formatNumWithOptions(state.lastRes.a)}, ${formatNumWithOptions(state.lastRes.b)})`; }
+  state.resultShown=true; render();
+}
+function evaluate(){
+  try{
+    const hadSep = /[∟ɹL]/.test(state.raw);
+    const norm = normalizeInput(state.raw);
+    const toks = tokenize(norm);
+    const rpn  = toRPN(toks);
+    let res    = evalRPN(rpn);
+
+    if(res && res.t==='pair'){
+      state.ans=NaN; state.lastRes={type:'pair',a:+res.a,b:+res.b}; state.repeat=null;
+    }else if(res && res.t==='dms'){
+      state.ans=+res.v; state.lastRes={type:'num',v:+res.v}; state.dmsDisplay=true; state.repeat=null;
+    }else{
+      state.ans=+res; state.lastRes={type:'num',v:+res}; captureRepeat(toks);
+    }
+
+    if(hadSep){ state.frac=true; state.fracMixed=true; }
+    else { state.frac=false; }
+
+    state.editAfterResult=false;
+    updateResultView();
+  }catch(_){
+    state.lastRes=null; state.resultStr='Error';
+    state.resultShown=true; state.editAfterResult=false; state.repeat=null; render();
+  }
+}
+
+/* init */
+render();
+fitToViewport();
+
+/* klávesnice */
+addEventListener('keydown',e=>{
+  const k=e.key;
+  if(k==='L'){ insRaw('∟'); return; }
+  if(k==='Enter'){e.preventDefault();evaluate();return;}
+  if(k==='Backspace'){e.preventDefault();back();return;}
+  if(k==='Escape'){e.preventDefault();ac();return;}
+  if(k==='ArrowLeft'){e.preventDefault();moveCursor(-1);return;}
+  if(k==='ArrowRight'){e.preventDefault();moveCursor(+1);return;}
+  if(/^[0-9]$/.test(k)){ if(state.modePick){ handleModePick(k); } else { insRaw(k); } return; }
+  if(k==='('||k===')'||k===','||k==='.'||k==='%'){insRaw(k);return;}
+  if(k==='^'){opAfterResult('^');return;}
+  if(k==='+'){opAfterResult('+');return;}
+  if(k==='-'){opAfterResult('−');return;}
+  if(k==='*'){opAfterResult('×');return;}
+  if(k==='/'){opAfterResult('÷');return;}
+  if(k==='e'){insRaw('E');return;}
+});
+</script>
+
+<script>
+  // Registrace service workeru – co nejdřív po loadu
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  }
+</script>
+</body>
+</html>

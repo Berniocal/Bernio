@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Jste offline</title>
+  <style>
+    html,body{height:100%;margin:0;background:#0f1722;color:#e8f0fe;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+    .card{max-width:540px}
+    h1{margin:0 0 8px;font-size:28px}
+    p{opacity:.9;line-height:1.5}
+    button{margin-top:16px;border:0;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Jste offline</h1>
+      <p>Aplikace potřebuje být načtená aspoň jednou online. Jakmile ji otevřete online, půjde příště i bez internetu.</p>
+      <button onclick="location.reload()">Zkusit znovu</button>
+    </div>
+  </div>
+</body>
+</html>
