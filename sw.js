@@ -57,3 +57,10 @@ self.addEventListener('fetch', (e) => {
     })());
   }
 });
+
+self.addEventListener('fetch', (event) => {
+  const { pathname } = new URL(event.request.url);
+  if (pathname.startsWith('/zpjevnicek/')) return; // nic nedělej
+  // ... zbytek SW logiky Bernio ...
+});
+
