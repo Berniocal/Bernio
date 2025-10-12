@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-51">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-52">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -325,37 +325,97 @@ function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).re
 
 function renderModeMenu(){
   function setMenu(labels){
+    // horní tři nápisy (L|C|R)
     exprEl.innerHTML =
       '<div class="modebar">' +
-        `<span class="label">${labels[0]}</span>` +
-        `<span class="label">${labels[1]}</span>` +
-        `<span class="label">${labels[2]}</span>` +
+        `<span class="label">${labels[0]||''}</span>` +
+        `<span class="label">${labels[1]||''}</span>` +
+        `<span class="label">${labels[2]||''}</span>` +
       '</div>';
+
+    // spodní řádek 1|2|3
     resEl.classList.add('mode');
     resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
 
-    // udělej horní 1/2/3 klikací
+    // klikací 1/2/3
     const row = resEl.querySelector('.numrow');
     if (row){
       Array.from(row.children).forEach((el, i)=>{
         el.style.cursor = 'pointer';
         el.addEventListener('pointerdown', (ev)=>{
           ev.preventDefault();
-          handleMenuChoice(String(i+1));   // 1 → start, 2 → end, 3 → teacher
+          handleMenuChoice(String(i+1));
         }, { passive:false });
       });
     }
     return true;
   }
-  if (state.modeStage === 1) return setMenu(['Deg','Rad','Gra']);
-  if (state.modeStage === 2) return setMenu(['ExS','ExE','Tea']);
-  if (state.modeStage === 3) return setMenu(['D','R','G']);   // <<< DRG> prompt
+
+  // ==== NOVÉ MODE stránky ====
+  if (state.modeStage === 11) return setMenu(['COMP','SD','REG']);
+  if (state.modeStage === 12) return setMenu(['Deg','Rad','Gra']);
+  if (state.modeStage === 13) return setMenu(['Fix','Sci','Norm']);
+  if (state.modeStage === 14) {
+    // Disp + jen "1" uprostřed
+    exprEl.innerHTML =
+      '<div class="modebar">' +
+        '<span class="label"></span>' +
+        '<span class="label">Disp</span>' +
+        '<span class="label"></span>' +
+      '</div>';
+    resEl.classList.add('mode');
+    resEl.innerHTML = '<div class="numrow"><span></span><span>1</span><span></span></div>';
+
+    const mid = resEl.querySelector('.numrow span:nth-child(2)');
+    if (mid){
+      mid.style.cursor = 'pointer';
+      mid.addEventListener('pointerdown', (ev)=>{
+        ev.preventDefault();
+        handleMenuChoice('1');
+      }, { passive:false });
+    }
+    return true;
+  }
+
+  // ==== PŮVODNÍ stránky (ponecháváme kvůli mini-promptu DRG>) ====
+  if (state.modeStage === 1)  return setMenu(['Deg','Rad','Gra']);
+  if (state.modeStage === 2)  return setMenu(['ExS','ExE','Tea']);
+  if (state.modeStage === 3)  return setMenu(['D','R','G']); // mini-prompt DRG>
+
+  // nic se nezobrazuje
   resEl.classList.remove('mode');
   return false;
 }
+
  
-// akce menu čísel 1/2/3
 function handleMenuChoice(digit){
+  // === NOVÉ MODE stránky ===
+  if (state.modeStage === 11){
+    // COMP / SD / REG – zatím nefunkční → jen zavřít menu
+    state.modeStage = 0; render();
+    return true;
+  }
+  if (state.modeStage === 12){
+    // Deg / Rad / Gra – FUNKČNÍ (už máš implementované)
+    if      (digit==='1') state.drg='DEG';
+    else if (digit==='2') state.drg='RAD';
+    else if (digit==='3') state.drg='GRAD';
+    state.modeStage=0; state.resultShown=false; state.resultStr='';
+    render();
+    return true;
+  }
+  if (state.modeStage === 13){
+    // Fix / Sci / Norm – zatím nefunkční → jen zavřít menu
+    state.modeStage = 0; render();
+    return true;
+  }
+  if (state.modeStage === 14){
+    // Disp / 1 – zatím nefunkční → jen zavřít menu
+    state.modeStage = 0; render();
+    return true;
+  }
+
+  // === PŮVODNÍ stránky (ponechané) ===
   if(state.modeStage===1){
     if(digit==='1') state.drg='DEG';
     else if(digit==='2') state.drg='RAD';
@@ -371,8 +431,7 @@ function handleMenuChoice(digit){
     state.modeStage=0; render();
     return true;
   }
-    if (state.modeStage===3){
-    // 1 => stupně, 2 => radiány, 3 => grady
+  if (state.modeStage===3){
     if (digit==='1') insRaw('°');
     else if (digit==='2') insRaw('r');
     else if (digit==='3') insRaw('g');
@@ -936,12 +995,18 @@ onPD(qs('#btnALPHA'), ()=>{
   render();
 });
 
-onPD(qs('#btnMODE'), ()=>{ 
+onPD(qs('#btnMODE'), ()=>{
   if(state.shift){ state.shift=false; state.ans=0; ac(true); return; }
   state.resultShown=false; state.resultStr='';
-  state.modeStage = (state.modeStage===0) ? 1 : (state.modeStage===1 ? 2 : 0);
+
+  // Nový cyklus MODE „stránek“: 11→12→13→14→(zpět na 11)
+  const s = state.modeStage;
+  state.modeStage = (s===0 ? 11 : s===11 ? 12 : s===12 ? 13 : s===13 ? 14 : s===14 ? 11
+                      // pokud byl zrovna mini-prompt DRG> (=3), skoč na 11
+                      : 11);
   render();
 });
+
 
 onPD(qs('#btnLeft'),  ()=> moveCursor(-1));
 onPD(qs('#btnRight'), ()=> moveCursor(+1));
@@ -2196,6 +2261,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
