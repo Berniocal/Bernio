@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-65">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-66">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -1945,26 +1945,41 @@ function toScientificSig(x, sig=10){
 
 function toFractionStr(x, mixed=true, maxDen=1e6){
   if(!isFinite(x)) return String(x);
-  const sign = x<0 ? -1 : 1;
+  const sign = x < 0 ? -1 : 1;
   let a = Math.abs(x);
   let w = Math.floor(a), f = a - w;
-  if(f === 0) return (sign<0?'-':'') + String(w);
-  let h1=1,h0=0,k1=0,k0=1,b=f;
-  while(true){
-    let A=Math.floor(b), h2=A*h1+h0, k2=A*h1+k0; /* NOTE: this line was wrong before? preserve original logic */ 
-    /* Keeping original but fix to standard convergents: */
-    h2=A*h1+h0; k2=A*k1+k0;
-    if(k2>maxDen) break;
-    h0=h1; k0=k1; h1=h2; k1=k2;
-    const diff=Math.abs(f - h1/k1);
-    if(diff<1e-12 || !isFinite(1/(b-A))) break;
-    b = 1/(b-A);
+  if (f === 0) return (sign < 0 ? '-' : '') + String(w);
+
+  // continued fraction aproximace pro f
+  let h0 = 0, h1 = 1;
+  let k0 = 1, k1 = 0;
+  let b = f;
+
+  while (true) {
+    const A  = Math.floor(b);
+    const h2 = A * h1 + h0;
+    const k2 = A * k1 + k0;
+    if (k2 > maxDen) break;
+
+    h0 = h1; k0 = k1;
+    h1 = h2; k1 = k2;
+
+    const diff = Math.abs(f - h1 / k1);
+    if (diff < 1e-12) break;
+    const denom = (b - A);
+    if (!(denom > 0)) break;
+    b = 1 / denom;
   }
-  let num=h1, den=k1;
-  if(!mixed){ num = w*den + num; w = 0; }
-  const body = (w ? (w + ' ʟ ' + num + ' ʟ ' + den) : (num + ' ʟ ' + den));
-  return (sign<0?'-':'') + body;
+
+  let num = h1, den = k1;
+  if (!mixed) {            // d/c
+    num = w * den + num;
+    w = 0;
+  }
+  const body = w ? (w + ' ∟ ' + num + ' ∟ ' + den) : (num + ' ∟ ' + den);
+  return (sign < 0 ? '-' : '') + body;
 }
+
 function degToDMS(x){
   const sign = x < 0 ? -1 : 1;
   x = Math.abs(x);
@@ -2106,20 +2121,21 @@ if (srcUnit && state.drg !== 'DEG') {
       // if (to === 'DEG') state.dmsDisplay = true;
     }
 
+// byl ve vstupu zlomek? → ukaž výsledek jako zlomek
+state.frac = hadSep;
 if (hadSep) {
-  state.frac = true;
-  // respektuj globální volbu z Disp (ab/c vs d/c)
-  state.fracMixed = (state.fracPrefMixed !== false); // true = ab/c, false = d/c
+  // respektuj globální volbu z Disp: true = ab/c, false = d/c
+  state.fracMixed = (state.fracPrefMixed !== false);
 } else {
   state.frac = false;
 }
 
-// Pokud uživatel psal DMS, ukaž výsledek rovnou ve stupních-minutách-vteřinách
+// Pokud uživatel psal DMS, ukaž DMS (jen v DEG)
 if (hadDMS && state.drg === 'DEG') { state.dmsDisplay = true; }
 
-
-state.editAfterResult=false;
+state.editAfterResult = false;
 updateResultView();
+
 
   }catch(_){
     state.lastRes=null; state.resultStr='Error';
@@ -2601,6 +2617,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
