@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-64">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-65">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2066,7 +2066,7 @@ function evaluate(){
 }
 
 
-   const hadSep = /[ʟ]/.test(state.raw);
+const hadSep = /[∟]/.test(state.raw);
 const hadDMS = /[°′″]/.test(state.raw);
 const norm = normalizeInput(evalRaw);
 
@@ -2106,8 +2106,13 @@ if (srcUnit && state.drg !== 'DEG') {
       // if (to === 'DEG') state.dmsDisplay = true;
     }
 
-    if(hadSep){ state.frac=true; state.fracMixed=true; }
-else { state.frac=false; }
+if (hadSep) {
+  state.frac = true;
+  // respektuj globální volbu z Disp (ab/c vs d/c)
+  state.fracMixed = (state.fracPrefMixed !== false); // true = ab/c, false = d/c
+} else {
+  state.frac = false;
+}
 
 // Pokud uživatel psal DMS, ukaž výsledek rovnou ve stupních-minutách-vteřinách
 if (hadDMS && state.drg === 'DEG') { state.dmsDisplay = true; }
@@ -2596,6 +2601,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
