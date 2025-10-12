@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Techaer QR generator</title>
+<meta name="color-scheme" content="dark light">
+<style>
+  :root{
+    --bg:#0b1220; --bg2:#0d1426; --card:#0f172a; --ink:#e5edff; --ink-muted:#9db0d3;
+    --edge:#1e293b; --brand:#3b82f6; --brand-2:#60a5fa; --ok:#10b981; --err:#ef4444;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:radial-gradient(1200px 800px at 10% -10%,#0f1b35 0%,#0b1220 55%), var(--bg);
+    color:var(--ink);
+    font:16px/1.45 system-ui,Segoe UI,Roboto,Arial
+  }
+  .wrap{max-width:980px;margin:22px auto;padding:0 18px}
+  .card{
+    background:linear-gradient(180deg,var(--card),#0b1326);
+    border:1px solid var(--edge);
+    border-radius:14px;
+    box-shadow:0 18px 60px rgba(0,0,0,.35);
+    padding:22px 24px
+  }
+  h1{margin:0 0 18px;font-weight:800;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+  h1::after{content:"";width:10px;height:10px;border-radius:999px;background:#38bdf8;box-shadow:0 0 18px #38bdf8}
+
+  /* ovládací řádek */
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  label{color:var(--ink-muted);font-size:14px}
+
+  /* bílé vstupy pro učitele */
+  .input-white{
+    background:#ffffff !important;
+    color:#111827 !important;
+    border:1px solid #cbd5e1 !important;
+    border-radius:10px; padding:10px 12px; outline:none;
+  }
+  #code{min-width:220px;text-transform:uppercase}
+
+  /* tlačítko generovat */
+  .btn{
+    padding:12px 16px;
+    background:linear-gradient(180deg,var(--brand),var(--brand-2));
+    color:#06101f;border:none;border-radius:10px;font-weight:800;
+    cursor:pointer; box-shadow:0 6px 24px rgba(59,130,246,.35)
+  }
+
+  /* tlačítko bude na samostatném řádku a uprostřed */
+  .row #gen{
+    display:block;
+    margin:12px auto 0;   /* auto = vycentrovat */
+    flex-basis:100%;      /* zalom na novou řádku v rámci .row */
+    width:100%;
+  }
+
+  /* QR blok vycentrovaný */
+  .qr-wrap{
+    margin:26px auto 18px;
+    display:block;
+    max-width:min(90vw, 480px);
+    background:#ffffff;          /* bílé okolí pro tichou zónu QR */
+    border-radius:12px;
+    padding:10px;
+    border:1px solid #e5e7eb;
+  }
+  #qrcanvas{
+    display:block;
+    width:100%; height:auto;
+    background:#ffffff; border-radius:6px;
+  }
+
+  /* seznam použitých kódů */
+  .used-block{
+    margin-top:20px;
+    background:#0b1426;border:1px solid var(--edge);
+    border-radius:12px;padding:12px
+  }
+  .hint{color:var(--ink-muted);font-size:13px;margin-bottom:6px}
+  .list{background:#0a1324;border:1px solid var(--edge);border-radius:10px;padding:10px 12px;color:#cbd5e1}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+         background:#0b1426;border:1px solid var(--edge);color:#e5edff;border-radius:10px;
+         padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:none}
+  .toast.ok{border-color:rgba(16,185,129,.5)}
+  .toast.err{border-color:rgba(239,68,68,.6)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Techaer QR generator</h1>
+
+    <!-- ovládání -->
+    <div class="row">
+      <div>
+        <label for="code">Kód (3 znaky)</label><br>
+        <input id="code" maxlength="3" placeholder="A7K" autocomplete="off" class="input-white">
+      </div>
+      <button id="gen" class="btn">Generovat QR</button>
+    </div>
+
+    <!-- vycentrovaný QR -->
+    <div class="qr-wrap">
+      <canvas id="qrcanvas" width="420" height="420"></canvas>
+    </div>
+<div class="used-block">
+  <div class="hint">Přihlášení studenti pro kód <b id="curCode">—</b>:</div>
+  <div id="roster" class="list">—</div>
+</div>
+
+    <!-- seznam použitých pod QR -->
+    <div class="used-block">
+      <div class="hint">Dnes vygenerované <b>START</b> kódy:</div>
+      <div id="used" class="list">—</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- QR knihovna -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script>
+/* ==== nastav si BASE URL workeru (bez koncového /) ==== */
+const API_BASE = "https://examqr.jendabernard.workers.dev";
+
+/* ===== pomocné ===== */
+const $ = (id)=>document.getElementById(id);
+const codeEl=$('code'), genBtn=$('gen'), usedEl=$('used'), qrCanvas=$('qrcanvas'), toastEl=$('toast');
+
+function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
+function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
+function showToast(msg, kind='ok'){
+  toastEl.textContent = msg; toastEl.className = 'toast '+kind;
+  toastEl.style.display='block'; setTimeout(()=>toastEl.style.display='none', 2400);
+}
+
+/* CORS-safe fetch */
+async function fetchJSON(url, init={}) {
+  const opts = { mode:'cors', cache:'no-store', ...init };
+  if (opts.method && opts.method!=='GET' && opts.method!=='HEAD') {
+    opts.headers = { ...(opts.headers||{}), 'Content-Type':'application/json' };
+  }
+  const res = await fetch(url, opts);
+  const txt = await res.text(); let data=null; try{ data = txt?JSON.parse(txt):null; }catch{ data={raw:txt}; }
+  if(!res.ok) throw new Error((data&&data.error)||(`${res.status} ${res.statusText}`));
+  return data;
+}
+
+function drawQR(text){
+  return new Promise((resolve,reject)=>{
+    QRCode.toCanvas(qrCanvas, String(text), {
+      width: qrCanvas.width, margin: 2, errorCorrectionLevel: 'M',
+      color: { dark:'#000000', light:'#ffffff' } // černobílý
+    }, (err)=> err?reject(err):resolve());
+  });
+}
+let currentCode = null;
+let rosterTimer = 0;
+
+function formatAgo(sec){
+  if (sec < 60) return `${sec|0}s`;
+  const m = (sec/60)|0, s = sec % 60 | 0;
+  return `${m}m ${s}s`;
+}
+
+function renderRoster(data){
+  const cur = document.getElementById('curCode');
+  const box = document.getElementById('roster');
+  cur.textContent = data.code || '—';
+
+  const list = data.participants || [];
+  if (!list.length){ box.innerHTML = '—'; return; }
+
+  const now = Math.floor(Date.now()/1000);
+   const rows = list.map(p => {
+    const since = formatAgo(now - (p.since || now));
+    const age   = now - (p.lastSeen || now);  // stáří posledního beatu (s)
+    const seen  = formatAgo(age);
+
+    // pokud jsme déle než 3 s bez beatu, považuj studenta za OFFLINE
+    const offlineByAge = age > 3;   // klidně dej 5–10, pokud chceš větší toleranci
+    const isOnline = p.online && !offlineByAge;
+
+    const flag  = (p.locked ? '🔒'
+                  : (!isOnline ? '📴'
+                  : (!p.visible ? '🙈' : '✅')));
+
+    const state = [
+      p.locked ? 'LOCKED' : '',
+      !isOnline ? `OFFLINE${offlineByAge ? ' (bez hlášení)' : ''}` : '',
+      !p.visible ? 'HIDDEN' : ''
+    ].filter(Boolean).join(' · ') || 'OK';
+
+    return `• <b>${p.name}</b> (${p.device||'?'}) — od: ${since}, naposledy: ${seen} ${flag} <span style="opacity:.8">(${state}${p.violations?`, #${p.violations}`:''}${p.lastReason?`, ${p.lastReason}`:''})</span>`;
+  });
+
+  box.innerHTML = rows.join('<br>');
+}
+
+  async function pollRoom(){
+  if (!currentCode) return;
+  try{
+    const res = await fetch(`${API_BASE.replace(/\/+$/,'')}/api/room/${currentCode}?t=${Date.now()}`, { cache:'no-store' });
+    const data = await res.json();
+    renderRoster(data);
+  }catch(e){
+    // ignoruj, zkusíme za 1s znovu
+  }
+}
+
+/* API akce */
+async function refreshUsed(){
+  try{
+    const data = await fetchJSON(API('api/used') + '?t=' + Date.now());
+    usedEl.textContent = (data.used && data.used.length) ? data.used.join(', ') : '—';
+  }catch(e){
+    usedEl.textContent = 'Nelze načíst: ' + e.message;
+  }
+}
+
+async function generate(){
+  const code = normalizeCode(codeEl.value);
+  const type = 'START';
+  const expSec = 60;
+
+  if (code.length !== 3) { showToast('Zadej přesně 3 alfanumerické znaky (např. A7K).','err'); return; }
+
+  let resp; // <<< přesuňte deklaraci sem
+  try{
+    resp = await fetchJSON(API('api/qr'), {
+      method:'POST',
+      body: JSON.stringify({ code, type, expSec })
+    });
+
+    let wrapped = resp.wrapped;
+    if (typeof wrapped === 'string') {
+      try { wrapped = JSON.parse(wrapped); } catch { wrapped = { payload: wrapped }; }
+    }
+    if(!wrapped || typeof wrapped.payload !== 'string') throw new Error('Neplatná odpověď API (chybí payload).');
+
+    await drawQR(JSON.stringify(wrapped));
+    showToast(`${type} • ${code} • platnost 60 s`, 'ok');
+    refreshUsed();
+  }catch(e){
+    showToast('Chyba: ' + e.message, 'err');
+    return; // ať nepokračujeme bez resp
+  }
+
+  // teď už resp existuje
+  const inner = (resp && resp.inner) ? resp.inner : null;
+  currentCode = (inner && inner.code) ? inner.code : code;
+  document.getElementById('curCode').textContent = currentCode;
+  if (rosterTimer) clearInterval(rosterTimer);
+  rosterTimer = setInterval(pollRoom, 1000);
+  pollRoom();
+}
+
+
+/* dráty */
+codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
+genBtn.addEventListener('click', generate);
+['keyup','change'].forEach(ev=>{
+  codeEl.addEventListener(ev, e=>{ if(e.key==='Enter') genBtn.click(); });
+});
+
+/* init */
+refreshUsed();
+</script>
+</body>
+</html>
