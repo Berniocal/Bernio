@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-63">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-64">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -426,8 +426,9 @@ if (state.modeStage === 14) {
 
 
 
+// --- MODE 141: výběr zlomků (ab/c vlevo, d/c střed; 1 a 2 přesně pod nimi; vpravo →) ---
 if (state.modeStage === 141) {
-  // ab/c vlevo, d/c uprostřed
+  // horní řádek
   exprEl.innerHTML =
     '<div class="modebar">' +
       '<span class="label">ab/c</span>' +   // vlevo
@@ -436,12 +437,12 @@ if (state.modeStage === 141) {
     '</div>';
 
   resEl.classList.add('mode');
-  // 1 vlevo, 2 uprostřed, vpravo šipka ⮕ do další stránky
+  // spodní řádek: 1 vlevo (pod ab/c), 2 uprostřed (pod d/c), vpravo šipka →
   resEl.innerHTML = `
-    <div class="numrow" style="display:grid;grid-template-columns:1fr 1fr auto;align-items:center;width:100%;">
+    <div class="numrow" style="display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;width:100%;">
       <span style="justify-self:start;cursor:pointer">1</span>
       <span style="justify-self:center;cursor:pointer">2</span>
-      <span id="dispNext" style="justify-self:end;cursor:pointer">⮕</span>
+      <span id="dispNext" style="justify-self:end;cursor:pointer">→</span>
     </div>`;
 
   const row = resEl.querySelector('.numrow');
@@ -451,33 +452,32 @@ if (state.modeStage === 141) {
   return true;
 }
 
+
+// --- MODE 142: oddělovač (Dot uprostřed + 1 uprostřed; Comma vpravo + 2 vpravo; vlevo zpět ←) ---
 if (state.modeStage === 142) {
-  // Dot uprostřed, Comma vpravo
+  // horní řádek: prázdno | Dot | Comma
   exprEl.innerHTML =
     '<div class="modebar">' +
-      '<span class="label"></span>' +          // vlevo prázdné
+      '<span class="label"></span>' +          // vlevo
       '<span class="label">Dot</span>' +       // střed
       '<span class="label">Comma</span>' +     // vpravo
     '</div>';
 
   resEl.classList.add('mode');
-  // vlevo zpět (←) do 141, uprostřed 1, vpravo 2
+  // spodní řádek: ← vlevo (zpět do 141), 1 uprostřed, 2 vpravo
   resEl.innerHTML = `
-    <div class="numrow" style="display:grid;grid-template-columns:auto 1fr 1fr;align-items:center;width:100%;">
+    <div class="numrow" style="display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;width:100%;">
       <span id="dispPrev" style="justify-self:start;cursor:pointer">←</span>
       <span style="justify-self:center;cursor:pointer">1</span>
       <span style="justify-self:end;cursor:pointer">2</span>
     </div>`;
 
   const row = resEl.querySelector('.numrow');
-  // zpět na výběr ab/c vs d/c
   resEl.querySelector('#dispPrev').addEventListener('pointerdown', (e)=>{ e.preventDefault(); state.modeStage = 141; render(); }, {passive:false});
-  // čísla
   row.children[1].addEventListener('pointerdown', (e)=>{ e.preventDefault(); handleMenuChoice('1'); }, {passive:false});
   row.children[2].addEventListener('pointerdown', (e)=>{ e.preventDefault(); handleMenuChoice('2'); }, {passive:false});
   return true;
 }
-
 
   // ==== PŮVODNÍ stránky (ponecháváme kvůli mini-promptu DRG>) ====
   if (state.modeStage === 1)  return setMenu(['Deg','Rad','Gra']);
@@ -1254,16 +1254,15 @@ onPD(qs('#btnALPHA'), ()=>{
 });
 
 onPD(qs('#btnMODE'), ()=>{
-  if(state.shift){ state.shift=false; state.ans=0; ac(true); return; }
-  state.resultShown=false; state.resultStr='';
+  if (state.shift){ state.shift = false; state.ans = 0; ac(true); return; }
+  state.resultShown = false; state.resultStr = '';
 
-  // Nový cyklus MODE „stránek“: 11→12→13→14→(zpět na 11)
+  // 0 → 11 → 12 → 13 → 14 → (pátý stisk) 0
   const s = state.modeStage;
-  state.modeStage = (s===0 ? 11 : s===11 ? 12 : s===12 ? 13 : s===13 ? 14 : s===14 ? 11
-                      // pokud byl zrovna mini-prompt DRG> (=3), skoč na 11
-                      : 11);
+  state.modeStage = (s===0 ? 11 : s===11 ? 12 : s===12 ? 13 : s===13 ? 14 : /* s===14 */ 0);
   render();
 });
+
 
 
 onPD(qs('#btnLeft'),  ()=> {
@@ -2597,6 +2596,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
