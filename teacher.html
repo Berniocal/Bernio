@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Techaer QR generator</title>
+<title>Teacher QR generator</title>
 <meta name="color-scheme" content="dark light">
 <style>
   :root{
@@ -92,7 +92,7 @@
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Techaer QR generator</h1>
+    <h1>Teacher QR generator</h1>
 
     <!-- ovládání -->
     <div class="row">
@@ -107,10 +107,11 @@
     <div class="qr-wrap">
       <canvas id="qrcanvas" width="420" height="420"></canvas>
     </div>
-<div class="used-block">
-  <div class="hint">Přihlášení studenti pro kód <b id="curCode">—</b>:</div>
-  <div id="roster" class="list">—</div>
-</div>
+
+    <div class="used-block">
+      <div class="hint">Přihlášení studenti pro kód <b id="curCode">—</b>:</div>
+      <div id="roster" class="list">—</div>
+    </div>
 
     <!-- seznam použitých pod QR -->
     <div class="used-block">
@@ -155,10 +156,11 @@ function drawQR(text){
   return new Promise((resolve,reject)=>{
     QRCode.toCanvas(qrCanvas, String(text), {
       width: qrCanvas.width, margin: 2, errorCorrectionLevel: 'M',
-      color: { dark:'#000000', light:'#ffffff' } // černobílý
+      color: { dark:'#000000', light:'#ffffff' }
     }, (err)=> err?reject(err):resolve());
   });
 }
+
 let currentCode = null;
 let rosterTimer = 0;
 
@@ -177,13 +179,12 @@ function renderRoster(data){
   if (!list.length){ box.innerHTML = '—'; return; }
 
   const now = Math.floor(Date.now()/1000);
-   const rows = list.map(p => {
+  const rows = list.map(p => {
     const since = formatAgo(now - (p.since || now));
-    const age   = now - (p.lastSeen || now);  // stáří posledního beatu (s)
+    const age   = now - (p.lastSeen || now);
     const seen  = formatAgo(age);
 
-    // pokud jsme déle než 3 s bez beatu, považuj studenta za OFFLINE
-    const offlineByAge = age > 3;   // klidně dej 5–10, pokud chceš větší toleranci
+    const offlineByAge = age > 3;
     const isOnline = p.online && !offlineByAge;
 
     const flag  = (p.locked ? '🔒'
@@ -202,7 +203,7 @@ function renderRoster(data){
   box.innerHTML = rows.join('<br>');
 }
 
-  async function pollRoom(){
+async function pollRoom(){
   if (!currentCode) return;
   try{
     const res = await fetch(`${API_BASE.replace(/\/+$/,'')}/api/room/${currentCode}?t=${Date.now()}`, { cache:'no-store' });
@@ -230,7 +231,7 @@ async function generate(){
 
   if (code.length !== 3) { showToast('Zadej přesně 3 alfanumerické znaky (např. A7K).','err'); return; }
 
-  let resp; // <<< přesuňte deklaraci sem
+  let resp;
   try{
     resp = await fetchJSON(API('api/qr'), {
       method:'POST',
@@ -248,10 +249,9 @@ async function generate(){
     refreshUsed();
   }catch(e){
     showToast('Chyba: ' + e.message, 'err');
-    return; // ať nepokračujeme bez resp
+    return;
   }
 
-  // teď už resp existuje
   const inner = (resp && resp.inner) ? resp.inner : null;
   currentCode = (inner && inner.code) ? inner.code : code;
   document.getElementById('curCode').textContent = currentCode;
@@ -259,7 +259,6 @@ async function generate(){
   rosterTimer = setInterval(pollRoom, 1000);
   pollRoom();
 }
-
 
 /* dráty */
 codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
