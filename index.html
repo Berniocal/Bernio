@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-56">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-57">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -448,19 +448,6 @@ if (state.modeStage === 131){
   saveFixSci();
 
   saveNorm();
-  state.modeStage = 0;
-  render();
-  return true;
-}
-
-if (state.modeStage === 132){
-  // Sci 0~9? → 0 = deset platných číslic
-  const n = Number(digit);
-  if (!Number.isNaN(n)){
-    state.sci = (n === 0) ? 10 : n;  // 0 = 10
-    state.fix = null;                // SCI a FIX jsou exkluzivní
-    saveFixSci();
-  }
   state.modeStage = 0;
   render();
   return true;
@@ -1825,57 +1812,52 @@ function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/6
 function formatNumWithOptions(v){
   if(!isFinite(v)) return String(v);
 
-  const xRaw = +v;                 // surové číslo pro FIX/SCI
-  const x    = roundSig(v,12);     // „uhlazené“ pro Norm/DMS/ENG/FRAC
+  const xRaw = +v;                 // pro FIX/SCI (zachováme koncové nuly atd.)
+  const x    = roundSig(v,12);     // pro Norm/DMS/ENG/FRAC je fajn uhlazení
 
-  // DMS / ENG / FRAC
+  // DMS / ENG / FRAC (mají přednost)
   if(state.dmsDisplay) return degToDMS(x);
   if(state.eng)        return toEngineering(x);
-  if(state.frac)       return toFractionStr(x,state.fracMixed);
+  if(state.frac)       return toFractionStr(x, state.fracMixed);
 
-  // FIX / SCI (použij xRaw)
+  // FIX – přesně n desetinných (0..9), jen pro výpis
   if (state.fix != null) {
     const n = Math.max(0, Math.min(9, state.fix|0));
     return xRaw.toFixed(n);
   }
+
+  // SCI – n platných číslic (0=10)
   if (state.sci != null) {
     const n = (state.sci|0) === 0 ? 10 : Math.max(1, Math.min(10, state.sci|0));
     return toScientificSig(xRaw, n);
   }
 
-  // ... dál Norm 1/2 logika s 'x'
-}
-
-
   // ---------- NORM 1 / NORM 2 ----------
-  // Pravidla:
-  // - Celá čísla s >10 ciframi → vědecky.
-  // - Desetinná čísla: Norm1 povolí max 2 desetinná místa, Norm2 max 9.
-  //   Pokud je třeba více míst → vědecky.
+  // Celá čísla s >10 ciframi → vědecky.
+  // Desetinná: Norm1 dovolí max 2 desetinná místa, Norm2 max 9. Jinak vědecky.
   const ax = Math.abs(x);
 
-  // Pomocník: kolik má číslo desetinných míst, když ho rozumně "rozepíšeme"
+  // integer?
+  if (Number.isInteger(x)) {
+    const digits = ax === 0 ? 1 : (Math.floor(Math.log10(ax)) + 1);
+    if (digits > 10) return toScientificAuto(x);
+    return stripZeros(x.toString());
+  }
+
+  // kolik desetin je opravdu potřeba
   const decimalsNeeded = (val) => {
-    // 12 míst stačí pro UI; uřízneme a očistíme nuly
     const s = stripZeros(val.toFixed(12));
     const p = s.indexOf('.');
     return p === -1 ? 0 : (s.length - p - 1);
   };
 
-  // 1) Integery: počet číslic
-  if (Number.isInteger(x)) {
-    const digits = ax === 0 ? 1 : (Math.floor(Math.log10(ax)) + 1);
-    if (digits > 10) return toScientificAuto(x);
-    // jinak ukážeme běžně (bez e)
-    return stripZeros(x.toString());
-  }
-
-  // 2) Desetinná čísla: limity dle normy
   const limit = (state.norm === 2) ? 9 : 2;
-  const decs = decimalsNeeded(x);
-  if (decs > limit) {
-    return toScientificAuto(x);
-  }
+  const decs  = decimalsNeeded(x);
+  if (decs > limit) return toScientificAuto(x);
+
+  return stripZeros(x.toFixed(Math.min(decs, 12)));
+}
+
 
   // 3) Nechceme zbytečné e-zápisy: ukaž běžný zápis s rozumným počtem míst
   //    (zarovnáme na skutečný počet potřebných desetinných míst)
@@ -2428,3 +2410,4 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
