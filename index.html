@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-61">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-62">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -401,22 +401,23 @@ if (state.modeStage === 132) {
 
 /* === NOVÉ: MODE 14 a submeny 141/142 === */
 if (state.modeStage === 14) {
-  // Disp úplně vpravo, "1" také vpravo
+  // Hlavní „Disp“ – vlevo „Disp“, dole vlevo „1“
   exprEl.innerHTML =
     '<div class="modebar">' +
-      '<span class="label"></span>' +
-      '<span class="label"></span>' +
       '<span class="label">Disp</span>' +
+      '<span class="label"></span>' +
+      '<span class="label"></span>' +
     '</div>';
   resEl.classList.add('mode');
-  resEl.innerHTML = '<div class="numrow"><span></span><span></span><span>1</span></div>';
+  resEl.innerHTML = '<div class="numrow"><span>1</span></div>';
   const row = resEl.querySelector('.numrow');
-  if (row && row.children[2]) {
-    row.children[2].style.cursor='pointer';
-    row.children[2].addEventListener('pointerdown', (ev)=>{ev.preventDefault(); handleMenuChoice('1');}, {passive:false});
+  if (row && row.children[0]) {
+    row.children[0].style.cursor='pointer';
+    row.children[0].addEventListener('pointerdown', (ev)=>{ev.preventDefault(); handleMenuChoice('1');}, {passive:false});
   }
   return true;
 }
+
 
 
 if (state.modeStage === 141) {
@@ -428,20 +429,19 @@ if (state.modeStage === 141) {
       '<span class="label"></span>' +
     '</div>';
   resEl.classList.add('mode');
-  resEl.innerHTML = `
-    <div class="numrow" style="display:grid;grid-template-columns:1fr 1fr auto;align-items:center;width:100%;">
-      <span style="justify-self:start;cursor:pointer">1</span>
-      <span style="justify-self:center;cursor:pointer">2</span>
-      <span id="dispNext" style="justify-self:end;cursor:pointer">⮕</span>
-    </div>`;
-  const row = resEl.querySelector('.numrow');
-  row.children[0].addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('1');},{passive:false});
-  row.children[1].addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('2');},{passive:false});
-  resEl.querySelector('#dispNext').addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('>');},{passive:false});
-  return true;
+resEl.innerHTML = `
+  <div class="numrow" style="display:grid;grid-template-columns:1fr 1fr auto;align-items:center;width:100%;">
+    <span style="justify-self:start;cursor:pointer">1</span>
+    <span style="justify-self:center;cursor:pointer">2</span>
+    <span style="justify-self:end;opacity:.85">⮕</span>
+  </div>`;
+const row = resEl.querySelector('.numrow');
+row.children[0].addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('1');},{passive:false});
+row.children[1].addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('2');},{passive:false});
+// POZOR: žádný listener na šipku – je jen indikace, přechod dělá HW pravá šipka
+return true;
 }
 if (state.modeStage === 142) {
-  // Volba oddělovače: Dot / Comma + dole 1 2
   exprEl.innerHTML =
     '<div class="modebar">' +
       '<span class="label">Dot</span>' +
@@ -449,15 +449,21 @@ if (state.modeStage === 142) {
       '<span class="label"></span>' +
     '</div>';
   resEl.classList.add('mode');
-  resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span></span></div>';
+  // ⬅ vlevo (klikací), 1 uprostřed, 2 vpravo
+  resEl.innerHTML = `
+    <div class="numrow" style="display:grid;grid-template-columns:auto 1fr 1fr;align-items:center;width:100%;">
+      <span id="dispBack" style="justify-self:start;cursor:pointer">⬅</span>
+      <span style="justify-self:center;cursor:pointer">1</span>
+      <span style="justify-self:end;cursor:pointer">2</span>
+    </div>`;
   const row = resEl.querySelector('.numrow');
-  Array.from(row.children).forEach((el, i)=>{
-    if (i<2){ el.style.cursor='pointer'; el.addEventListener('pointerdown', (ev)=>{ev.preventDefault(); handleMenuChoice(String(i+1));},{passive:false}); }
-  });
+  // šipka zpět
+  resEl.querySelector('#dispBack').addEventListener('pointerdown', (e)=>{ e.preventDefault(); state.modeStage = 141; render(); }, {passive:false});
+  // 1 = Dot, 2 = Comma
+  row.children[1].addEventListener('pointerdown', (ev)=>{ ev.preventDefault(); handleMenuChoice('1'); }, {passive:false});
+  row.children[2].addEventListener('pointerdown', (ev)=>{ ev.preventDefault(); handleMenuChoice('2'); }, {passive:false});
   return true;
 }
-
-
 
   // ==== PŮVODNÍ stránky (ponecháváme kvůli mini-promptu DRG>) ====
   if (state.modeStage === 1)  return setMenu(['Deg','Rad','Gra']);
@@ -1246,14 +1252,15 @@ onPD(qs('#btnMODE'), ()=>{
 });
 
 
-onPD(qs('#btnLeft'),  ()=> moveCursor(-1));
-onPD(qs('#btnRight'), ()=> {
-  if (state.modeStage === 141) {        // v podmenu zlomků pokračuj na oddělovač
-    handleMenuChoice('>');
-  } else {
-    moveCursor(+1);
-  }
+onPD(qs('#btnLeft'),  ()=> {
+  if (state.modeStage === 142) { state.modeStage = 141; render(); return; }
+  moveCursor(-1);
 });
+onPD(qs('#btnRight'), ()=> {
+  if (state.modeStage === 141) { state.modeStage = 142; render(); return; }
+  moveCursor(+1);
+});
+
 
 
 /* funkční klávesy */
@@ -2121,8 +2128,17 @@ addEventListener('keydown',e=>{
   if(k==='Enter'){e.preventDefault();evaluate();return;}
   if(k==='Backspace'){e.preventDefault();back();return;}
   if(k==='Escape'){e.preventDefault();ac();return;}
-  if(k==='ArrowLeft'){e.preventDefault();moveCursor(-1);return;}
-  if(k==='ArrowRight'){e.preventDefault();moveCursor(+1);return;}
+if (k==='ArrowLeft'){
+  e.preventDefault();
+  if (state.modeStage === 142){ state.modeStage = 141; render(); return; }
+  moveCursor(-1); return;
+}
+if (k==='ArrowRight'){
+  e.preventDefault();
+  if (state.modeStage === 141){ state.modeStage = 142; render(); return; }
+  moveCursor(+1); return;
+}
+
   if(/^[0-9]$/.test(k)){
     if(state.modeStage>0){ handleMenuChoice(k); }
     else { insRaw(k); }
@@ -2567,5 +2583,6 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
