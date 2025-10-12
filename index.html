@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-53">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-54">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -421,6 +421,7 @@ if (state.modeStage === 131){
   if (digit === '1') state.norm = 1;
   else if (digit === '2') state.norm = 2;
   // nic nevypisujeme na displej – jen zavřít menu
+   saveNorm();
   state.modeStage = 0;
   render();
   return true;
@@ -603,6 +604,17 @@ let state={
   percentSuffix:'',
   lastPercentCtx:null       // { Araw,Braw, op, A, B } uložené po A×B%          // <<< přidáno
 };
+const NORM_KEY = 'bernio.norm.v1';
+
+function saveNorm(){
+  try{ localStorage.setItem(NORM_KEY, String(state.norm||1)); }catch(_){}
+}
+function loadNorm(){
+  try{
+    const v = Number(localStorage.getItem(NORM_KEY));
+    if (v === 1 || v === 2) state.norm = v;
+  }catch(_){}
+}
 
 
 /* ===== pretty + caret, auto scroll kurzoru ===== */
@@ -1840,6 +1852,7 @@ updateResultView();
 }
 
 /* init */
+loadNorm();
 render();
 fitToViewport();
 updateExamUI();
@@ -2300,6 +2313,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
