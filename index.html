@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-59">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-60">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -830,7 +830,13 @@ function prettySegments(raw){
       let j=i+2; while(j<raw.length && raw[j]!==')') j++;
       if(j<raw.length){ const expo=raw.slice(i+2,j).replace(/-/g,'−'); push('<sup>'+expo+'</sup>', j-i+1); i=j+1; continue; }
     }
-    const ch=raw[i]; const pretty = ch==='*'?'×': ch==='/'?'÷': ch==='-'?'−': ch==='.'?(state.decSep===','?',','):'.': ch;
+    const ch=raw[i]; 
+   const pretty = ch==='*' ? '×'
+  : ch==='/' ? '÷'
+  : ch==='-' ? '−'
+  : ch==='.' ? (state.decSep===',' ? ',' : '.')
+  : ch;
+
     push(pretty,1); i++;
   }
   return segs;
@@ -1129,7 +1135,7 @@ function smartDeleteRootComma(){
 //   A ∟ B ∟ C  … smíšený (A + B/C)
 //   N ∟ D      … nepravý/pravoúhlý
 function findFractionSpanAroundCursor(src, cursor){
-  const re = /-?\d+(?:\.\d+)?\s*∟\s*\d+(?:\s*∟\s*\d+)?/g;
+  const re = /-?\d+(?:\.\d+)?\s*ʟ\s*\d+(?:\s*ʟ\s*\d+)?/g;
   let m, hit=null;
   while ((m = re.exec(src))){
     const s = m.index, e = s + m[0].length;
@@ -1141,7 +1147,7 @@ function findFractionSpanAroundCursor(src, cursor){
 // přehoď smíšený ↔ nepravý textově (bez závorek a operátorů)
 function toggleFractionText(txt){
   // normalizace mezer kolem ∟
-  const parts = txt.replace(/\s*∟\s*/g,' ∟ ').trim().split(/\s*∟\s*/);
+  const parts = txt.replace(/\s*ʟ\s*/g,' ʟ ').trim().split(/\s*ʟ\s*/);
 
   if (parts.length === 3){
     // A ∟ B ∟ C  -> (A*C + B) ∟ C
@@ -1328,7 +1334,7 @@ onPD(qs('#btnFracKey'), ()=>{
 
   // běžné vložení separátoru "∟"
   clearForNewEntry();
-  insRaw('∟');
+  insRaw('ʟ');
 });
 
 
@@ -1587,9 +1593,9 @@ function normalizeInput(s){
   s=autoCloseUnary(s);
   s=autoCloseRoot(s);
 
-  const sep    = '[∟]'; // pouze náš symbol, žádné "L" apod.
-  const mixRe  = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
-  const fracRe = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
+  const sep    = '[ʟ]';// pouze náš symbol, žádné "L" apod.
+const mixRe  = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
+const fracRe = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
 
   let prev;
   do {
@@ -1924,7 +1930,7 @@ function toFractionStr(x, mixed=true, maxDen=1e6){
   }
   let num=h1, den=k1;
   if(!mixed){ num = w*den + num; w = 0; }
-  const body = (w ? (w + ' ∟ ' + num + ' ∟ ' + den) : (num + ' ∟ ' + den));
+  const body = (w ? (w + ' ʟ ' + num + ' ʟ ' + den) : (num + ' ʟ ' + den));
   return (sign<0?'-':'') + body;
 }
 function degToDMS(x){
@@ -2028,7 +2034,7 @@ function evaluate(){
 }
 
 
-    const hadSep = /[∟]/.test(state.raw);
+   const hadSep = /[ʟ]/.test(state.raw);
 const hadDMS = /[°′″]/.test(state.raw);
 const norm = normalizeInput(evalRaw);
 
@@ -2099,7 +2105,7 @@ updateExamUI();
 /* klávesnice */
 addEventListener('keydown',e=>{
   const k=e.key;
-  if(k==='L'){ insRaw('∟'); return; }
+  if(k==='L'){ insRaw('ʟ'); return; }
   if(k==='Enter'){e.preventDefault();evaluate();return;}
   if(k==='Backspace'){e.preventDefault();back();return;}
   if(k==='Escape'){e.preventDefault();ac();return;}
@@ -2549,3 +2555,4 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
