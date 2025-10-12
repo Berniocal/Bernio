@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="cs">
 <head>
@@ -6,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-50">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-51">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -160,6 +159,12 @@ body.exam-on .calc{
   .num{background:var(--num);color:var(--num-text)} .fn{background:var(--fn);color:var(--fn-text)}
   .pink{background:var(--pink);color:#3b1c26} .pink.soft{background:var(--pink2)}
   .legend{position:absolute;top:6px;left:8px;font-size:.72em;color:#b08c00;opacity:.9;pointer-events:none}
+  /* ALPHA label vpravo nahoře na tlačítkách */
+.legend.alpha{
+  left:auto;
+  right:8px;
+  color: var(--alpha);
+}
   .main{display:block}
   .botgrid .key{padding:.85em .25em .6em;font-size:clamp(22px,7.2vw,34px)}
   .root{position:relative;display:inline-block;padding-left:.05em}
@@ -180,6 +185,7 @@ body.exam-on .calc{
     <div class="line2">
       <div class="badges">
         <span class="badge auto" id="bShift">SHIFT</span>
+        <span class="badge auto" id="bAlpha">ALPHA</span>
         <span class="badge auto" id="bHyp">HYP</span>
         <span class="badge always" id="bDRG">DEG</span>
         <span class="badge auto" id="bDMS">DMS</span>
@@ -195,16 +201,17 @@ body.exam-on .calc{
   <!-- HORNÍ 6×5 -->
   <div class="boards">
     <div class="topgrid">
-      <button class="oval" id="btnSHIFT">SHIFT</button>
-      <button class="oval" id="btnQR">QR</button>
-      <button class="oval replay span2" id="btnLeft">◀</button>
-      <button class="oval replay span2" id="btnRight">▶</button>
-      <button class="oval" id="btnMODE"><span class="main">MODE</span></button>
-      <button class="oval" id="btnFS">⛶</button>
+<button class="oval" id="btnSHIFT">SHIFT</button>
+<button class="oval" id="btnALPHA">ALPHA</button>
+<button class="oval replay span2" id="btnLeft">◀</button>
+<button class="oval replay span2" id="btnRight">▶</button>
+<button class="oval" id="btnMODE"><span class="main">MODE</span></button>
+<button class="oval" id="btnQR">QR</button>
+
 
       <button class="key fn" id="btnInv"><span class="legend">x!</span><span class="main">x⁻¹</span></button>
       <button class="key fn" id="btnComb"><span class="legend">nPr</span><span class="main">nCr</span></button>
-      <button class="key fn" id="btnPolRec"><span class="legend">Rec(</span><span class="main">Pol(</span></button>
+      <button class="key fn" id="btnPolRec"><span class="legend">Rec(</span><span class="legend alpha">:</span><span class="main">Pol(</span></button>
       <button class="key fn" id="btnPow3"><span class="legend"><span class="root small"><small>3</small>√<span class="rad">x</span></span></span><span class="main">x³</span></button>
 
       <button class="key fn" id="btnFracKey"><span class="legend">d/c</span><span class="main">a b/c</span></button>
@@ -212,21 +219,21 @@ body.exam-on .calc{
       <button class="key fn" id="btnPow2"><span class="main">x²</span></button>
       <button class="key fn" id="btnPow"><span class="legend"><span class="root small"><small>y</small>√<span class="rad">x</span></span></span><span class="main">^</span></button>
       <button class="key fn" data-fn="log"><span class="legend">10ˣ</span><span class="main">log</span></button>
-      <button class="key fn" data-fn="ln"><span class="legend">eˣ</span><span class="main">ln</span></button>
+    <button class="key fn" data-fn="ln"><span class="legend">eˣ</span><span class="legend alpha">e</span><span class="main">ln</span></button>
 
-      <button class="key fn" id="btnNeg"><span class="main">(−)</span></button>
-      <button class="key fn" id="btnDMSsym"><span class="main">° ′ ″</span></button>
-      <button class="key fn" id="btnHYP"><span class="main">hyp</span></button>
-      <button class="key fn" data-trig="sin"><span class="legend">sin⁻¹</span><span class="main">sin</span></button>
-      <button class="key fn" data-trig="cos"><span class="legend">cos⁻¹</span><span class="main">cos</span></button>
-      <button class="key fn" data-trig="tan"><span class="legend">tan⁻¹</span><span class="main">tan</span></button>
+      <button class="key fn" id="btnNeg"><span class="legend alpha">A</span><span class="main">(−)</span></button>
+      <button class="key fn" id="btnDMSsym"><span class="legend alpha">B</span><span class="main">° ′ ″</span></button>
+      <button class="key fn" id="btnHYP"><span class="legend alpha">C</span><span class="main">hyp</span></button>
+      <button class="key fn" data-trig="sin"><span class="legend">sin⁻¹</span><span class="legend alpha">D</span><span class="main">sin</span></button>
+    <button class="key fn" data-trig="cos"><span class="legend">cos⁻¹</span><span class="legend alpha">E</span><span class="main">cos</span></button>
+     <button class="key fn" data-trig="tan"><span class="legend">tan⁻¹</span><span class="legend alpha">F</span><span class="main">tan</span></button>
 
       <button class="key fn" id="btnRCLSTO"><span class="legend">STO</span><span class="main">RCL</span></button>
       <button class="key fn" id="btnENG"><span class="main">ENG</span></button>
       <button class="key fn" data-ins="(" id="btnParL"><span class="main">(</span></button>
-      <button class="key fn" data-ins=")" id="btnParR"><span class="main">)</span></button>
-      <button class="key fn" data-ins="," id="btnComma"><span class="main">,</span></button>
-      <button class="key fn" id="btnMpm"><span class="legend">M−</span><span class="main">M+</span></button>
+      <button class="key fn" data-ins=")" id="btnParR"><span class="legend alpha">X</span><span class="main">)</span></button>
+      <button class="key fn" data-ins="," id="btnComma"><span class="legend alpha">Y</span><span class="main">,</span></button>
+     <button class="key fn" id="btnMpm"><span class="legend">M−</span><span class="legend alpha">M</span><span class="main">M+</span></button>
     </div>
 
     <!-- DOLNÍ 5×4 -->
@@ -310,7 +317,7 @@ window.addEventListener('orientationchange', fitToViewport);
 
 /* ===== stav ===== */
 const exprEl=qs('#expr'), resEl=qs('#res');
-const bShift=qs('#bShift'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem');
+const bShift=qs('#bShift'), bAlpha=qs('#bAlpha'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem');
 const calcEl = document.getElementById('calc');
 const TEACHER_URL = "https://berniocal.github.io/Bernio/teacher.html"; // jediný zdroj pravdy
 const API_BASE = "https://examqr.jendabernard.workers.dev";
@@ -513,7 +520,7 @@ const Exam = (() => {
 
 <script>
 let state={
-  raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
+   raw:'', cursor:0, ans:0, drg:'DEG', shift:false, alpha:false, hyp:false, eng:false,
   dmsDisplay:false, frac:false, fracMixed:true, fracPrefMixed:true, memory:0, memOn:false,
   lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
   modeStage:0, repeat:null, examActive:false, examCode:'',
@@ -558,6 +565,7 @@ function scrollToCaret(){
 }
 function render(){
   bShift.classList.toggle('on',state.shift);
+  bAlpha.classList.toggle('on',state.alpha);
   bHyp.classList.toggle('on',state.hyp);
   bENG.classList.toggle('on',state.eng);
   bDMS.classList.toggle('on',state.dmsDisplay);
@@ -915,6 +923,18 @@ onPD(qs('#btnSHIFT'), ()=>{
   state.shift = !state.shift;
   render();
 });
+onPD(qs('#btnALPHA'), ()=>{
+  // stejně jako u SHIFT: pokud je otevřené MODE menu, zavři ho
+  if (state.modeStage > 0) {
+    state.modeStage = 0;
+    render();
+    return;
+  }
+  // přepnout ALPHA; pokud nově zapnuto, vypneme SHIFT (ať jsou výlučné)
+  state.alpha = !state.alpha;
+  if (state.alpha) state.shift = false;
+  render();
+});
 
 onPD(qs('#btnMODE'), ()=>{ 
   if(state.shift){ state.shift=false; state.ans=0; ac(true); return; }
@@ -925,19 +945,6 @@ onPD(qs('#btnMODE'), ()=>{
 
 onPD(qs('#btnLeft'),  ()=> moveCursor(-1));
 onPD(qs('#btnRight'), ()=> moveCursor(+1));
-
-onPD(qs('#btnFS'), ()=>{ 
-  const doc=document, el=doc.documentElement;
-  const inFS=doc.fullscreenElement||doc.webkitFullscreenElement;
-  const req=el.requestFullscreen||el.webkitRequestFullscreen;
-  const exit=doc.exitFullscreen||doc.webkitExitFullscreen||(()=>Promise.resolve());
-  if(inFS){ try{ exit.call(doc); }catch(e){} }
-  else{
-    if(req){ try{ const p=req.call(el); if(p&&p.catch)p.catch(()=>window.scrollTo(0,1)); }catch(e){ window.scrollTo(0,1); } }
-    else { window.scrollTo(0,1); }
-  }
-  setTimeout(fitToViewport, 120);
-});
 
 /* funkční klávesy */
 onPD(qs('#btnInv'), ()=>{
@@ -2189,6 +2196,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
