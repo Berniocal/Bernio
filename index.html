@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-66">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-67">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2008,9 +2008,9 @@ function formatNumWithOptions(v){
   const x    = roundSig(v,12);     // pro Norm/DMS/ENG/FRAC je fajn uhlazení
 
   // DMS / ENG / FRAC (mají přednost)
-  if(state.dmsDisplay) return degToDMS(x);
-  if(state.eng)        return toEngineering(x);
-  if(state.frac)       return toFractionStr(x, state.fracMixed);
+if (state.dmsDisplay) return degToDMS(x);
+if (state.frac)       return toFractionStr(x, state.fracMixed);
+if (state.eng)        return toEngineering(x);
 
   // FIX – přesně n desetinných (0..9), jen pro výpis
   if (state.fix != null) {
@@ -2081,7 +2081,7 @@ function evaluate(){
 }
 
 
-const hadSep = /[∟]/.test(state.raw);
+const hadSep = /[ʟ]/.test(state.raw);   // detekujeme náš separátor ʟ z klávesy a b/c
 const hadDMS = /[°′″]/.test(state.raw);
 const norm = normalizeInput(evalRaw);
 
@@ -2617,6 +2617,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
