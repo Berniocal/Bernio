@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="cs">
 <head>
@@ -5,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-49">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -23,6 +24,64 @@
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     color:#fff; overscroll-behavior:contain;
   }
+  .menu-top{ font-size: clamp(18px,4.2vw,22px); letter-spacing:.04em }
+  .menu-bot{ font-size: clamp(16px,3.8vw,20px); font-weight:700 }
+  .menu-grid{ display:flex; justify-content:space-between; padding:0 6px }
+  .menu-grid span{ min-width: 30%; text-align:center }
+/* MODE – horní řádek: tři nápisy vlevo/na střed/vpravo, bez změny výšky */
+/* Horní MODE řádek – přesná L|C|R mřížka, velké jako zadávací text */
+/* Horní MODE řádek – Deg | Rad | Gra (nebo ExS | ExE | Tea) vlevo/střed/vpravo */
+.modebar{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  align-items:center;
+  width:100%;
+  margin:0; padding:0;
+}
+.modebar .label{
+  font-size:clamp(24px,6.2vw,33px); /* stejná jako zadávání */
+  line-height:1.15;
+  margin:0; padding:0;
+}
+.modebar .label:nth-child(1){ justify-self:start; }
+.modebar .label:nth-child(2){ justify-self:center; }
+.modebar .label:nth-child(3){ justify-self:end; }
+
+/* Spodní MODE řádek – 1 | 2 | 3 vlevo/střed/vpravo; velikost jako výsledky (.res) */
+.numrow{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  align-items:center;
+  width:100%;
+  margin:0; padding:0;
+  text-align:initial;     /* zruší pravé zarovnání .res pro tento obsah */
+  font-size:inherit;      /* zdědí clamp z .res → stejná velikost jako výsledky */
+}
+.numrow span:nth-child(1){ justify-self:start; }
+.numrow span:nth-child(2){ justify-self:center; }
+.numrow span:nth-child(3){ justify-self:end; }
+/* === MODE speciální layout pro spodní řádek s čísly === */
+.res.mode{
+  display:block;       /* v MODE nechceme flex-justify vpravo */
+  text-align:initial;
+  margin-left:0;
+  min-width:100%;
+  height:1.34em;       /* stejná FIXNÍ výška jako běžný výsledek */
+  overflow:hidden;
+}
+
+.res.mode .numrow{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items:center;
+  width:100%;
+  height:100%;         /* vyplň celý řádek */
+}
+
+.res.mode .numrow span:nth-child(1){ justify-self:start; }
+.res.mode .numrow span:nth-child(2){ justify-self:center; }
+.res.mode .numrow span:nth-child(3){ justify-self:end; }
+
   .calc{
     width:min(480px,100vw);
     height:auto;
@@ -32,35 +91,67 @@
     display:grid; grid-template-rows:auto auto; gap:12px;
     transform-origin: top center;
   }
-  .display{
-    background:var(--lcd); color:var(--lcd-text); border-radius:10px;
-    padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
-    font-family:ui-monospace,Menlo,Consolas,monospace;
-    display:grid; grid-template-rows:auto auto; gap:6px;
+  /* === TEST MODE UI === */
+body.exam-on .calc{
+  background: linear-gradient(var(--exam-c1, #ffe8f2), var(--exam-c2, #ffdbe8));
+}
+
+.display{
+  background:var(--lcd); color:var(--lcd-text); border-radius:10px;
+  padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  display:grid; grid-template-rows:auto auto; gap:0px; /* menší mezera */
+  position:relative;
+}
+#exprWrap{
+  font-size:clamp(26px,7vw,36px);  /* o kousek větší než dřív */
+  line-height:1.28;
+  min-height:1.46em;
+  white-space:nowrap;
+  overflow:hidden;
+  position:relative;
+}
+
+  #expr{display:block; width:100%; white-space:nowrap; padding-right:8px;}
+
+  .line2{display:flex; align-items:center; gap:8px; min-height:1.34em}
+
+  .badges{
+    position:absolute; top:4px; left:8px; right:8px;
+    display:flex; gap:8px; flex-wrap:wrap; pointer-events:none;
   }
-  #exprWrap{
-    font-size:clamp(24px,6.2vw,33px);
-    line-height:1.6;
-    min-height:1.8em;
-    white-space:nowrap;
-    overflow:hidden;
-    position:relative;
+  .badge{
+    background:transparent; border:none; color:#1b2b3b;
+    border-radius:0; padding:0; font-size:.8em; line-height:1; user-select:none;
   }
-  #expr{display:inline-block; white-space:nowrap; padding-right:8px;}
-  .line2{display:flex; align-items:center; gap:8px}
-  .badges{display:flex;gap:6px;flex-wrap:wrap}
-  .badge{background:#243444;border:1px solid #2e455a;color:#e7fbff;border-radius:7px;padding:2px 6px;font-size:.9em;user-select:none}
-  .badge.auto{display:none}.badge.auto.on{display:inline-flex}.badge.always{display:inline-flex}
-  .res{margin-left:auto; font-size:clamp(24px,6.6vw,34px); font-weight:700; text-align:right; min-width:40%}
+  .badge.auto{display:none}
+  .badge.auto.on{display:inline-flex}
+  .badge.always{display:inline-flex}
+
+.res{
+  display:flex;                   /* aby sup/exp nevytahoval řádek */
+  align-items:center;
+  justify-content:flex-end;       /* výsledek vpravo (mimo MODE) */
+  margin-left:auto;
+  font-size:clamp(26px,7.2vw,36px);
+  line-height:1.2;
+  font-weight:700;
+  min-width:40%;
+  height:1.34em;                  /* FIXNÍ výška řádku výsledku */
+  overflow:hidden;                /* nic nevyleze ven */
+}
+
+
+
   .res .sci .times, .res .sci .ten{ font-size:.8em; }
   .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
 
   .boards{display:grid;grid-template-rows:auto auto;gap:12px}
-  .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);}
-  .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);}
+  .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);} 
+  .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);} 
 
   .oval{background:var(--oval);color:#263445;border-radius:18px;padding:.6em .2em;text-align:center;font-weight:700;box-shadow:var(--shadow);touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
-  #btnSHIFT{color:var(--shift)} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}
+  #btnSHIFT{color:#b08c00} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}
   .replay{background:#bfcbd9;color:#3b4b5c;border-radius:999px;font-size:20px}
   .span2{grid-row:span 2}
 
@@ -69,7 +160,6 @@
   .num{background:var(--num);color:var(--num-text)} .fn{background:var(--fn);color:var(--fn-text)}
   .pink{background:var(--pink);color:#3b1c26} .pink.soft{background:var(--pink2)}
   .legend{position:absolute;top:6px;left:8px;font-size:.72em;color:#b08c00;opacity:.9;pointer-events:none}
-  .calc.shift-on .legend{color:var(--shift)}
   .main{display:block}
   .botgrid .key{padding:.85em .25em .6em;font-size:clamp(22px,7.2vw,34px)}
   .root{position:relative;display:inline-block;padding-left:.05em}
@@ -78,6 +168,8 @@
   .root.small .rad{border-top-width:1.6px}
   .caret{display:inline-block;width:.7ch;text-align:center;animation:blink 1s step-end infinite;font-weight:700}
   @keyframes blink{50%{opacity:0}} sup{font-size:.7em}
+ 
+
 </style>
 </head>
 <body>
@@ -93,6 +185,8 @@
         <span class="badge auto" id="bDMS">DMS</span>
         <span class="badge auto" id="bENG">ENG</span>
         <span class="badge auto" id="bMem">M</span>
+        <span class="badge auto" id="bExamTimer"></span>
+        <span class="badge auto" id="bExamCode" style="margin-left:auto"></span>
       </div>
       <span class="res" id="res"></span>
     </div>
@@ -102,10 +196,10 @@
   <div class="boards">
     <div class="topgrid">
       <button class="oval" id="btnSHIFT">SHIFT</button>
-      <button class="oval" id="btnALPHA">ALPHA</button>
+      <button class="oval" id="btnQR">QR</button>
       <button class="oval replay span2" id="btnLeft">◀</button>
       <button class="oval replay span2" id="btnRight">▶</button>
-      <button class="oval" id="btnMODE"><span class="legend">CLR</span><span class="main">MODE</span></button>
+      <button class="oval" id="btnMODE"><span class="main">MODE</span></button>
       <button class="oval" id="btnFS">⛶</button>
 
       <button class="key fn" id="btnInv"><span class="legend">x!</span><span class="main">x⁻¹</span></button>
@@ -164,17 +258,34 @@
   </div>
 </div>
 
+<!-- RESET SW/Cache helper -->
+<script>
+(async () => {
+  const p = new URL(location.href).searchParams;
+  if (p.get('reset') === '1' && 'serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const k of keys) await caches.delete(k);
+      }
+    } catch {}
+    location.replace(location.pathname);
+  }
+})();
+</script>
 <script>
 /* ===== drobné utily ===== */
 const qs=s=>document.querySelector(s);
-function onPD(el,fn){ el.addEventListener('pointerdown',fn,{passive:true}); }
+function onPD(el, fn){ if(!el) return; el.addEventListener('pointerdown', fn, {passive:true}); }
 function onPDAll(sel,fn){ document.querySelectorAll(sel).forEach(el=>onPD(el,()=>fn(el))); }
 /* === autopřizpůsobení výšce v ne-fullscreenu === */
 const calcBox = document.getElementById('calc');
 function isFS(){ const d=document; return !!(d.fullscreenElement||d.webkitFullscreenElement); }
 
 function fitToViewport(){
-  if(isFS()){ 
+  if(isFS()){
     calcBox.style.transform='scale(1)';
     calcBox.style.marginTop='';
     return;
@@ -200,11 +311,216 @@ window.addEventListener('orientationchange', fitToViewport);
 /* ===== stav ===== */
 const exprEl=qs('#expr'), resEl=qs('#res');
 const bShift=qs('#bShift'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem');
+const calcEl = document.getElementById('calc');
+const TEACHER_URL = "https://berniocal.github.io/Bernio/teacher.html"; // jediný zdroj pravdy
+const API_BASE = "https://examqr.jendabernard.workers.dev";
+function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
 
-let state={ raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
-            dmsDisplay:false, frac:false, fracMixed:true, memory:0, memOn:false,
-            lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
-            modePick:false, repeat:null };
+function renderModeMenu(){
+  function setMenu(labels){
+    exprEl.innerHTML =
+      '<div class="modebar">' +
+        `<span class="label">${labels[0]}</span>` +
+        `<span class="label">${labels[1]}</span>` +
+        `<span class="label">${labels[2]}</span>` +
+      '</div>';
+    resEl.classList.add('mode');
+    resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
+
+    // udělej horní 1/2/3 klikací
+    const row = resEl.querySelector('.numrow');
+    if (row){
+      Array.from(row.children).forEach((el, i)=>{
+        el.style.cursor = 'pointer';
+        el.addEventListener('pointerdown', (ev)=>{
+          ev.preventDefault();
+          handleMenuChoice(String(i+1));   // 1 → start, 2 → end, 3 → teacher
+        }, { passive:false });
+      });
+    }
+    return true;
+  }
+  if (state.modeStage === 1) return setMenu(['Deg','Rad','Gra']);
+  if (state.modeStage === 2) return setMenu(['ExS','ExE','Tea']);
+  if (state.modeStage === 3) return setMenu(['D','R','G']);   // <<< DRG> prompt
+  resEl.classList.remove('mode');
+  return false;
+}
+ 
+// akce menu čísel 1/2/3
+function handleMenuChoice(digit){
+  if(state.modeStage===1){
+    if(digit==='1') state.drg='DEG';
+    else if(digit==='2') state.drg='RAD';
+    else if(digit==='3') state.drg='GRAD';
+    state.modeStage=0; state.resultShown=false; state.resultStr='';
+    render();
+    return true;
+  }
+  if(state.modeStage===2){
+    if(digit==='1'){ startExamScan(); }
+    else if(digit==='2'){ endExamScan(); }
+    else if(digit==='3'){ openTeacher(); }
+    state.modeStage=0; render();
+    return true;
+  }
+    if (state.modeStage===3){
+    // 1 => stupně, 2 => radiány, 3 => grady
+    if (digit==='1') insRaw('°');
+    else if (digit==='2') insRaw('r');
+    else if (digit==='3') insRaw('g');
+    state.modeStage=0; 
+    render();
+    return true;
+  }
+
+  return false;
+}
+
+
+
+
+// Hoist-safe definice (použitá v menu)
+function openTeacher(){
+  try{ window.open(TEACHER_URL, '_blank', 'noopener'); }catch(_){}
+}
+</script>
+  <script>
+/* ===================== Exam minimal + notifyEvent + hidden video ===================== */
+// Jednoduché hlášení událostí pro teacher (žádné heartbeat)
+async function notifyEvent(type, extra = {}) {
+  try {
+    await fetch(API('api/event'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: state.examCode || '',
+        pid: Exam.state.pid || null,
+        type,                          // 'hidden' | 'offline' | (volitelně 'online')
+        ...extra
+      })
+    });
+  } catch (_) {}
+}
+
+// iOS/SAFARI: skryté (1×1) video pro udržení displeje/medií „v chodu“
+let __hiddenVideo = null;
+function startHiddenVideoTrick() {
+  if (__hiddenVideo) return;
+  const v = document.createElement('video');
+  v.muted = true;
+  v.loop = true;
+  v.playsInline = true;
+  v.style.cssText = "position:absolute;width:1px;height:1px;opacity:0;pointer-events:none";
+  v.src = "data:video/mp4;base64,AAAA";
+  document.body.appendChild(v);
+  const tryPlay = () => { v.play().catch(()=>{}); document.removeEventListener('pointerdown', tryPlay); };
+  document.addEventListener('pointerdown', tryPlay, { passive: true });
+  __hiddenVideo = v;
+}
+function stopHiddenVideoTrick() {
+  if (!__hiddenVideo) return;
+  try { __hiddenVideo.pause(); } catch {}
+  try { __hiddenVideo.remove(); } catch {}
+  __hiddenVideo = null;
+}
+
+// Minimalistický Exam (bez senzorů, bez zvuků, jen UI + eventy)
+const Exam = (() => {
+  const S = { active:false, pid:null, startAt:0, timerId:0 };
+
+  function setUIOn(code){
+    state.examActive = true;
+    state.examCode   = code;
+    updateExamUI();
+    startExamColorCycleDeterministic(code);
+    const tEl = document.getElementById('bExamTimer');
+    const tick = () => {
+      if (!S.startAt || !tEl) return;
+      const mins = Math.floor((Date.now() - S.startAt)/60000);
+      tEl.textContent = `${mins} min`;
+      tEl.classList.add('on');
+    };
+    if (S.timerId) clearInterval(S.timerId);
+    tick();
+    S.timerId = setInterval(tick, 6000);
+    startHiddenVideoTrick();
+  }
+  function setUIOff(){
+    if (S.timerId) { clearInterval(S.timerId); S.timerId = 0; }
+    const tEl = document.getElementById('bExamTimer');
+    if (tEl) { tEl.textContent=''; tEl.classList.remove('on'); }
+    state.examActive = false;
+    state.examCode   = '';
+    updateExamUI();
+    stopExamColorCycle();
+    stopHiddenVideoTrick();
+  }
+
+  function onVisibility(){ if (S.active && document.hidden) notifyEvent('hidden'); }
+  function onOffline(){ if (S.active && !navigator.onLine) notifyEvent('offline'); }
+  function onOnline(){ /* případně: if (S.active) notifyEvent('online'); */ }
+
+  async function start(code){
+    if (S.active) return;
+    if (!navigator.onLine){ alert('Pro start musíš být online.'); return; }
+    let ident = (window.prompt && window.prompt('Zadej svůj IDENTIFIKÁTOR:')) || '';
+    ident = String(ident||'').trim();
+    if (!ident){ alert('Bez identifikátoru nelze pokračovat.'); return; }
+    try{
+      const resp = await fetch(API('api/join'), {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ code: String(code||'').toUpperCase().slice(0,3), ident })
+      });
+      const text = await resp.text();
+      const data = text ? JSON.parse(text) : null;
+      if (!resp.ok) throw new Error((data && data.error) || `${resp.status} ${resp.statusText}`);
+      if (!data || !data.pid) throw new Error('Bad response from /api/join');
+      S.pid = data.pid;
+    }catch(e){
+      alert('Nelze se připojit k testu.\n' + String(e.message||e));
+      return;
+    }
+    S.active = true;
+    S.startAt = Date.now();
+    const norm = String(code||'').toUpperCase().slice(0,3);
+    setUIOn(norm);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+    state.resultShown = true;
+    state.resultStr = 'Test mód aktivní.';
+    render();
+  }
+  function finish(){
+    if (!S.active) return;
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('offline', onOffline);
+    window.removeEventListener('online', onOnline);
+    S.active = false;
+    S.pid = null;
+    S.startAt = 0;
+    setUIOff();
+    state.resultShown = true;
+    state.resultStr = 'Zkouška ukončena.';
+    render();
+  }
+  return { start, finish, get state(){ return S; } };
+})();
+</script>
+
+
+<script>
+let state={
+  raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
+  dmsDisplay:false, frac:false, fracMixed:true, fracPrefMixed:true, memory:0, memOn:false,
+  lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
+  modeStage:0, repeat:null, examActive:false, examCode:'',
+  percentSuffix:'',
+  lastPercentCtx:null       // { Araw,Braw, op, A, B } uložené po A×B%          // <<< přidáno
+};
+
 
 /* ===== pretty + caret, auto scroll kurzoru ===== */
 function prettySegments(raw){
@@ -247,13 +563,11 @@ function render(){
   bDMS.classList.toggle('on',state.dmsDisplay);
   bMem.classList.toggle('on',state.memOn);
   bDRG.textContent=state.drg;
+  calcEl.classList.toggle('shift-on', state.shift);
 
-  if(state.modePick){
-    exprEl.innerHTML = '<span style="opacity:.9">1&nbsp;DEG&nbsp;&nbsp;&nbsp;2&nbsp;RAD&nbsp;&nbsp;&nbsp;3&nbsp;GRAD</span>';
-    resEl.textContent = '';
+  if(renderModeMenu()){
     return;
   }
-
   const segs=prettySegments(state.raw);
   let out='', count=0, placed=false;
   for(const s of segs){
@@ -267,8 +581,225 @@ function render(){
 
   scrollToCaret();
 }
+function updateExamUI(){
+  document.body.classList.toggle('exam-on', !!state.examActive);
 
-function clearForNewEntry(){ if(state.resultShown && !state.editAfterResult){ state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0; } }
+  const badgeCode = document.getElementById('bExamCode');
+  const badgeTimer = document.getElementById('bExamTimer');
+
+  // kód z QR
+  if (badgeCode) {
+    if (state.examActive && state.examCode){
+      badgeCode.textContent = state.examCode.toUpperCase();
+      badgeCode.classList.add('on');
+    } else {
+      badgeCode.textContent = '';
+      badgeCode.classList.remove('on');
+    }
+  }
+
+  // timer vlevo – jen v exam-mode
+  if (badgeTimer) {
+    if (state.examActive){
+      badgeTimer.classList.add('on');
+      // barva odlišená od kódu (klidně uprav podle vkusu)
+      badgeTimer.style.color = '#0aa';
+      badgeTimer.style.fontWeight = '700';
+    } else {
+      badgeTimer.textContent = '';
+      badgeTimer.classList.remove('on');
+    }
+  }
+}
+
+  window.updateExamUI = updateExamUI;
+// === Exam background tween (5 minut plynule) ===
+let examRAF = 0;
+
+function hashCode(str){
+  let h = 0; for (let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
+  return h >>> 0;
+}
+function seededRandom(seed){
+  let x = (seed % 2147483647) || 1;
+  return () => (x = (x * 48271) % 2147483647) / 2147483647;
+}
+function hsl(h, s, l){ return {h, s, l}; } // 0-360, 0-1, 0-1
+
+function hslToRgbArray(h, s, l){
+  // očekává h v [0..360), s,l v [0..1]; vrací [R,G,B] 0..255
+  const c = (1 - Math.abs(2*l - 1)) * s;
+  const hp = (h % 360) / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r=0,g=0,b=0;
+  if (0<=hp&&hp<1){ r=c; g=x; b=0; }
+  else if (1<=hp&&hp<2){ r=x; g=c; b=0; }
+  else if (2<=hp&&hp<3){ r=0; g=c; b=x; }
+  else if (3<=hp&&hp<4){ r=0; g=x; b=c; }
+  else if (4<=hp&&hp<5){ r=x; g=0; b=c; }
+  else { r=c; g=0; b=x; }
+  const m = l - c/2;
+  const R = Math.round((r+m)*255);
+  const G = Math.round((g+m)*255);
+  const B = Math.round((b+m)*255);
+  return [R, G, B];
+}
+function rgbToCss(rgb){ const [R,G,B] = rgb; return `rgb(${R}, ${G}, ${B})`; }
+
+function lerp(a, b, t){ return a + (b - a) * t; }
+function lerpHsl(a, b, t){
+  // plynule i přes 360/0 (zkrácenou cestou)
+  let dh = ((b.h - a.h + 540) % 360) - 180;
+  return hsl(
+    (a.h + dh*t + 360) % 360,
+    lerp(a.s, b.s, t),
+    lerp(a.l, b.l, t)
+  );
+}
+
+let tween = null;
+/*
+  tween = {
+    rand,               // RNG pro deterministické další cíle
+    start1, start2,     // HSL start gradientu
+    end1, end2,         // HSL cíl gradientu
+    t0,                 // start timestamp (ms)
+    dur: 300000         // 5 minut
+  }
+*/
+// === Forbidden / similar-to-base-color filter ===
+const BASE_BG_HEX = ['#203347', '#1a2c3d']; // běžné pozadí kalkulačky
+
+function hexToRgb(hex){
+  const h = hex.replace('#','');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function srgbToLinear(v){ // v ∈ [0..1]
+  return (v <= 0.04045) ? (v/12.92) : Math.pow((v+0.055)/1.055, 2.4);
+}
+function rgbDistLinear(a, b){ // eukleid v lineárním RGB, citlivější na tmavé
+  const al = a.map(v => srgbToLinear(v/255));
+  const bl = b.map(v => srgbToLinear(v/255));
+  const dx = al[0]-bl[0], dy = al[1]-bl[1], dz = al[2]-bl[2];
+  return Math.sqrt(dx*dx + dy*dy + dz*dz);
+}
+const FORBIDDEN_RGB = BASE_BG_HEX.map(hexToRgb);
+// práh podobnosti – 0.18 je docela přísný; zvětši → víc vyhazuje
+const FORBIDDEN_DIST = 0.18;
+
+function isNearForbidden(rgb){
+  return FORBIDDEN_RGB.some(base => rgbDistLinear(rgb, base) < FORBIDDEN_DIST);
+}
+
+function randomPastel(rand){
+  // původně sis bral h, s, l → nechávám styl podobný
+  // Pastely: vyšší s, vyšší l (ale ne úplně křiklavé)
+  let tries = 0;
+  while(true){
+    const h = rand()*360;
+    const s = 0.45 + rand()*0.35;   // 45–80 %
+    const l = 0.62 + rand()*0.18;   // 62–80 %
+    const rgb = hslToRgbArray(h, s, l);  // [R,G,B]
+
+
+
+    // vyřaď barvy podobné běžnému pozadí kalkulačky
+    if (!isNearForbidden(rgb)) {
+      return { h, s, l, rgb };
+    }
+    if (++tries > 40){
+      // nouzový únik – když náhodou padáme jen do zakázané zóny
+      return { h, s, l, rgb };
+    }
+  }
+}
+
+function hueDiff(a,b){
+ const d = Math.abs(a.h - b.h) % 360;
+return d > 180 ? 360 - d : d;
+}
+function pickNextTargets(rand){
+const c1 = randomPastel(rand);
+let c2 = randomPastel(rand);
+let tries = 0;
+ // udrž aspoň ~50° rozestup v hue, ať nejsou obě barvy moc podobné
+ while (hueDiff(c1, c2) < 50 && tries++ < 20) c2 = randomPastel(rand);
+ return { c1, c2 };
+} 
+function applyGradient(c1, c2){
+  const rgb1 = hslToRgbArray(c1.h, c1.s, c1.l);
+  const rgb2 = hslToRgbArray(c2.h, c2.s, c2.l);
+  document.documentElement.style.setProperty('--exam-c1', rgbToCss(rgb1));
+document.documentElement.style.setProperty('--exam-c2', rgbToCss(rgb2));
+
+
+}
+
+
+function stepExamTween(now){
+  if(!tween) return;
+  const {start1, start2, end1, end2, t0, dur, rand} = tween;
+  let p = (now - t0) / dur;
+  if (p >= 1){
+    // hotovo – nastav cíl, vygeneruj nový cíl, reset času
+    applyGradient(end1, end2);
+    const next = pickNextTargets(rand);
+    tween.start1 = end1;
+    tween.start2 = end2;
+    tween.end1 = next.c1;
+    tween.end2 = next.c2;
+    tween.t0 = now;
+     p = 0;
+    // nová (náhodná) délka příštího přechodu
+    tween.dur = 45000 + Math.floor(rand()*45000);
+  }
+  const cur1 = lerpHsl(tween.start1, tween.end1, Math.min(Math.max(p,0),1));
+  const cur2 = lerpHsl(tween.start2, tween.end2, Math.min(Math.max(p,0),1));
+  applyGradient(cur1, cur2);
+  examRAF = requestAnimationFrame(stepExamTween);
+}
+
+function startExamColorCycleDeterministic(code){
+  stopExamColorCycle(); // jistota čistého startu
+
+  const seed = hashCode(String(code||'').toUpperCase());
+  const rand = seededRandom(seed);
+
+ // Počáteční barvy: hned náhodné pastely (žádná fixní růžová)
+ const first  = pickNextTargets(rand);
+ const start1 = first.c1;
+ const start2 = first.c2;
+ const target = pickNextTargets(rand);
+  tween = {
+    rand,
+    start1, start2,
+    end1: target.c1,
+    end2: target.c2,
+    t0: performance.now(),
+   // rychlejší a variabilní: 45–90 s
+   dur: 45000 + Math.floor(rand()*45000)
+  };
+
+  // nastav okamžitě start, ať UI hned sedí
+  applyGradient(start1, start2);
+
+  examRAF = requestAnimationFrame(stepExamTween);
+}
+
+function stopExamColorCycle(){
+  if (examRAF){ cancelAnimationFrame(examRAF); examRAF = 0; }
+  tween = null;
+  // vrátit default (necháš klidně růžovou nebo smaž proměnné)
+  document.documentElement.style.removeProperty('--exam-c1');
+  document.documentElement.style.removeProperty('--exam-c2');
+}
+
+function clearForNewEntry(){
+ state.percentSuffix = ''; state.lastPercentCtx = null;            // <<< přidáno
+  if(state.resultShown && !state.editAfterResult){
+    state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0;
+  }
+}
 function insRaw(txt){ clearForNewEntry(); state.raw=state.raw.slice(0,state.cursor)+txt+state.raw.slice(state.cursor); state.cursor+=txt.length; render(); }
 
 /* SMART-DEL bloky */
@@ -299,6 +830,60 @@ function smartDeleteRootComma(){
   }
   return false;
 }
+// === FRACTION TOGGLE (d/c) v řádku zadávání ===
+// najdi nejbližší zlomek (separátor "∟") obsahující kurzor:
+//   A ∟ B ∟ C  … smíšený (A + B/C)
+//   N ∟ D      … nepravý/pravoúhlý
+function findFractionSpanAroundCursor(src, cursor){
+  const re = /-?\d+(?:\.\d+)?\s*∟\s*\d+(?:\s*∟\s*\d+)?/g;
+  let m, hit=null;
+  while ((m = re.exec(src))){
+    const s = m.index, e = s + m[0].length;
+    if (s <= cursor && cursor <= e){ hit = { start:s, end:e, text:m[0] }; }
+  }
+  return hit;
+}
+
+// přehoď smíšený ↔ nepravý textově (bez závorek a operátorů)
+function toggleFractionText(txt){
+  // normalizace mezer kolem ∟
+  const parts = txt.replace(/\s*∟\s*/g,' ∟ ').trim().split(/\s*∟\s*/);
+
+  if (parts.length === 3){
+    // A ∟ B ∟ C  -> (A*C + B) ∟ C
+    const A = +parts[0], B = +parts[1], C = +parts[2];
+    if (!isFinite(A)||!isFinite(B)||!isFinite(C)||C===0) return txt;
+    const sign = A < 0 ? -1 : 1;     // smíšené číslo nese znamenko v A
+    const N = sign*(Math.abs(A)*C + B);
+    return `${N} ∟ ${C}`;
+  }
+  if (parts.length === 2){
+    // N ∟ D  ->  W ∟ R ∟ D   (jen když |N| >= D a R>0)
+    const N = +parts[0], D = +parts[1];
+    if (!isFinite(N)||!isFinite(D)||D===0) return txt;
+    const sign = N < 0 ? -1 : 1;
+    const n = Math.abs(N);
+    if (n < D) return txt;           // už je vlastník → neměň
+    const W = Math.floor(n / D);
+    const R = n % D;
+    if (R === 0) return String(sign*W);  // přesně celé číslo
+    const w = sign < 0 ? -W : W;         // znaménko přenes na celé
+    return `${w} ∟ ${R} ∟ ${D}`;
+  }
+  return txt;
+}
+
+// proveď přepnutí u zlomku, který obsahuje kurzor; vrať true pokud proběhlo
+function toggleFractionAtCursor(){
+  const hit = findFractionSpanAroundCursor(state.raw, state.cursor);
+  if (!hit) return false;
+  const newTxt = toggleFractionText(hit.text);
+  if (newTxt === hit.text) return false;
+  state.raw = state.raw.slice(0, hit.start) + newTxt + state.raw.slice(hit.end);
+  // posuň kurzor na konec upraveného zlomku
+  state.cursor = hit.start + newTxt.length;
+  return true;
+}
 
 function back(){
   if(smartDeleteRootComma()){ render(); return; }
@@ -312,24 +897,32 @@ function back(){
 }
 
 function moveCursor(step){ if(state.resultShown) state.editAfterResult=true; state.cursor=Math.max(0,Math.min(state.raw.length,state.cursor+step)); render(); }
-function ac(hard=false){ state.raw=''; state.cursor=0; if(hard){ state.ans=0; } state.resultShown=false; state.resultStr=''; state.lastRes=null; state.editAfterResult=false; document.getElementById('exprWrap').scrollLeft=0; render(); }
+function ac(hard=false){
+  state.raw=''; state.cursor=0; if(hard){ state.ans=0; }
+  state.resultShown=false; state.resultStr=''; state.lastRes=null;
+  state.editAfterResult=false; document.getElementById('exprWrap').scrollLeft=0;
+  state.percentSuffix=''; state.lastPercentCtx=null;               // <<< přidáno
+  render();
+}
 
 /* ovládací prvky */
 onPD(qs('#btnSHIFT'), ()=>{
-  if(state.modePick){ state.modePick = false; }
+  if (state.modeStage > 0) { 
+    state.modeStage = 0; 
+    render(); 
+    return; 
+  }
   state.shift = !state.shift;
   render();
 });
 
 onPD(qs('#btnMODE'), ()=>{ 
   if(state.shift){ state.shift=false; state.ans=0; ac(true); return; }
-  state.modePick = true;
-  state.resultShown = false;
-  state.resultStr = '';
+  state.resultShown=false; state.resultStr='';
+  state.modeStage = (state.modeStage===0) ? 1 : (state.modeStage===1 ? 2 : 0);
   render();
 });
 
-onPD(qs('#btnALPHA'), ()=>{});
 onPD(qs('#btnLeft'),  ()=> moveCursor(-1));
 onPD(qs('#btnRight'), ()=> moveCursor(+1));
 
@@ -347,34 +940,111 @@ onPD(qs('#btnFS'), ()=>{
 });
 
 /* funkční klávesy */
-onPD(qs('#btnInv'), ()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; if(state.cursor>0 && /[0-9\)]/.test(state.raw[state.cursor-1])) insRaw('!'); else insRaw('fact(');} else insRaw('^(-1)'); });
+onPD(qs('#btnInv'), ()=>{
+  if(state.resultShown && !state.editAfterResult){
+    // Po "=", držíme výsledek zobrazený a stavíme na Ans
+    state.editAfterResult = true;
+    if(state.shift){
+      state.shift = false;
+      state.raw = 'Ans!';              // faktorál Ans
+      state.cursor = state.raw.length;
+      render();
+    } else {
+      state.raw = 'Ans^(-1)';          // převrácená hodnota Ans
+      state.cursor = state.raw.length;
+      render();
+    }
+    return;
+  }
+  // běžné chování při editaci výrazu
+  clearForNewEntry();
+  if(state.shift){
+    state.shift=false;
+    if(state.cursor>0 && /[0-9\)]/.test(state.raw[state.cursor-1])) insRaw('!');
+    else insRaw('fact(');
+  } else {
+    insRaw('^(-1)');
+  }
+});
+
 
 function insertCP(op){ if(state.resultShown && !state.editAfterResult) return; if(state.cursor===0 || !/[0-9]/.test(state.raw[state.cursor-1])) return; insRaw(op); }
 onPD(qs('#btnComb'),()=>{ if(state.shift){ state.shift=false; insertCP('P'); } else insertCP('C'); });
 
 onPD(qs('#btnPolRec'),()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; insRaw('Rec(');} else insRaw('Pol('); });
-onPD(qs('#btnPow3'),()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; insRaw('cbrt(');} else insRaw('^(3)'); });
-onPD(qs('#btnFracKey'), ()=>{
-  if(state.resultShown){
+onPD(qs('#btnPow3'),()=>{
+  if(state.resultShown && !state.editAfterResult){
+    state.editAfterResult = true;
     if(state.shift){
       state.shift=false;
-      state.frac = true;
-      state.fracMixed = false;
-    }else{
-      if(!state.frac){ state.frac=true; state.fracMixed=true; }
-      else if(state.frac && state.fracMixed){ state.frac=false; }
-      else { state.frac=true; state.fracMixed=true; }
+      state.raw = 'cbrt(Ans)';        // ∛(Ans)
+      state.cursor = state.raw.length;
+      render();
+    } else {
+      state.raw = 'Ans^(3)';          // Ans^3
+      state.cursor = state.raw.length;
+      render();
+    }
+    return;
+  }
+  clearForNewEntry();
+  if(state.shift){ state.shift=false; insRaw('cbrt(');} else insRaw('^(3)');
+});
+
+onPD(qs('#btnFracKey'), ()=>{
+  if (state.resultShown){
+    if (state.shift){
+      // SHIFT: přepínej SMÍŠENÝ ↔ NEPRAVÝ a ulož preferenci
+      state.shift = false;
+      if (!state.frac) {
+        state.frac = true;
+        state.fracMixed = state.fracPrefMixed ?? true;
+      } else {
+        state.fracMixed = !state.fracMixed;
+      }
+      state.fracPrefMixed = state.fracMixed; // zapamatuj volbu
+    } else {
+      // bez SHIFT: TOGGLE mezi desetinným a (naposledy zvoleným) zlomkem
+      if (state.frac) {
+        state.frac = false;                 // na desetinné
+      } else {
+        state.frac = true;                  // na zlomek
+        state.fracMixed = state.fracPrefMixed ?? true;
+      }
     }
     updateResultView(); render();
     return;
   }
+
+
+  // === V řádku zadávání: SHIFT + (a b/c) = d/c toggle pod kurzorem ===
+  if (state.shift){
+    state.shift = false;
+    if (toggleFractionAtCursor()){ render(); return; }
+    // když u kurzoru žádný zlomek není, nic nedělej
+    render();
+    return;
+  }
+
+  // běžné vložení separátoru "∟"
   clearForNewEntry();
-  state.shift=false;
   insRaw('∟');
 });
 
+
 onPD(qs('#btnSqrt'),()=>{ clearForNewEntry(); insRaw('sqrt('); });
-onPD(qs('#btnPow2'),()=>{ clearForNewEntry(); insRaw('^(2)'); });
+onPD(qs('#btnPow2'),()=>{
+  if(state.resultShown && !state.editAfterResult){
+    state.editAfterResult = true;
+    state.raw = 'Ans^(2)';            // Ans^2
+    state.cursor = state.raw.length;
+    render();
+    return;
+  }
+  clearForNewEntry();
+  insRaw('^(2)');
+});
+
 
 onPD(qs('#btnPow'), ()=>{ 
   if(state.shift){
@@ -388,7 +1058,51 @@ onPD(qs('#btnPow'), ()=>{
 onPD(qs('#btnHYP'), ()=>{ state.hyp=!state.hyp; render(); });
 onPD(qs('#btnNeg'), ()=> insRaw('−'));
 
-onPD(qs('#btnDMSsym'),()=>{ if(state.resultShown && !state.editAfterResult){ state.dmsDisplay=!state.dmsDisplay; updateResultView(); } else { if(state.shift&&state.hyp){ state.shift=false; insRaw('″'); } else if(state.shift){ state.shift=false; insRaw('′'); } else insRaw('°'); }});
+onPD(qs('#btnDMSsym'),()=>{
+  // Pokud je zobrazen výsledek a nezačali jsme editovat, přepínej DMS <-> desetinný
+  if(state.resultShown && !state.editAfterResult){
+    state.dmsDisplay = !state.dmsDisplay;
+    updateResultView();
+    return;
+  }
+
+  // Rozsah pouze v aktuálním "členu" za posledním operátorem nebo levou závorkou
+  const ops = ['+', '−', '×', '÷', ',', '('];
+  const beforeAll = state.raw.slice(0, state.cursor);
+  let segStart = 0;
+  for (const op of ops) {
+    const idx = beforeAll.lastIndexOf(op);
+    if (idx >= segStart) segStart = idx + 1;
+  }
+  const scope = beforeAll.slice(segStart);
+
+  // SHIFT může vynutit konkrétní symboly (zpětná kompatibilita)
+  if(state.shift && state.hyp){ state.shift=false; insRaw('″'); return; }
+  if(state.shift){ state.shift=false; insRaw('′'); return; }
+
+  const lastDeg = scope.lastIndexOf('°');
+  const lastMin = scope.lastIndexOf('′');
+  const lastSec = scope.lastIndexOf('″');
+
+  // 1) v aktuálním členu ještě nebyl "°" → vlož "° "
+  if(lastDeg === -1){
+    insRaw('° ');
+    return;
+  }
+  // 2) máme "°", ale ne "′" → vlož "′ "
+  if(lastMin < lastDeg){
+    insRaw('′ ');
+    return;
+  }
+  // 3) máme i "′", ale ne "″" → vlož "″"
+  if(lastSec < lastMin){
+    insRaw('″');
+    return;
+  }
+  // 4) kompletní trojice je hotová → začni novou DMS sekvenci v tomto členu
+  insRaw(' ° ');
+});
+
 
 onPD(qs('#btnRCLSTO'),()=>{ if(state.shift){ state.shift=false; state.memory= +state.ans || 0; state.memOn=state.memory!==0; render(); } else insRaw(String(state.memory)); });
 onPD(qs('#btnENG'),()=>{ state.eng=!state.eng; if(state.resultShown) updateResultView(); render(); });
@@ -407,12 +1121,105 @@ onPDAll('[data-trig]', el=>{
 });
 
 onPD(qs('#btn0'),  ()=>{ if(state.shift){ state.shift=false; insRaw('Rnd(');} else insRaw('0'); });
-onPD(qs('#btnDot'),()=>{ if(state.shift){ state.shift=false; insRaw('RAN#()');} else insRaw('.'); });
+onPD(qs('#btnDot'),()=>{
+  if(state.shift){
+    state.shift=false;
+    insRaw('RAN#');       // bez závorek
+  } else {
+    insRaw('.');
+  }
+});
+
 onPD(qs('#btnEXP'),()=>{ if(state.shift){ state.shift=false; insRaw('π'); } else insRaw('E'); });
-onPD(qs('#btnAns'),()=>{ if(state.shift){ state.shift=false; state.drg = state.drg==='DEG'?'RAD':state.drg==='RAD'?'GRAD':'DEG'; if(state.resultShown) updateResultView(); render(); } else insRaw('Ans'); });
+onPD(qs('#btnAns'), ()=>{ 
+  if (state.shift){
+    state.shift = false;
+    // otevři mini-menu DRG> (D|R|G nahoře + 1|2|3 dole)
+    state.modeStage = 3;
+    state.resultShown = false;
+    state.resultStr = '';
+    render();
+  } else {
+    insRaw('Ans');
+  }
+});
+
+// === Chytré procento: přizpůsobení podle posledního operátoru ===
+// Vrátí {A, op, B} pro nejvzdálenější binární operátor na nejvyšší úrovni
+
+
+// textové vložení postfixového % za B (náš parser chápe jako B/100)
+function asPercentOfB(A, op, B){
+  return `${A} ${op} ${B}%`;
+}
+
+// pro +/−: převeď na A ± (A × B%)
+function addSubWithPercent(A, op, B){
+  return `${A} ${op} ( ${A} × ${B}% )`;
+}
+// --- Okamžité procento – pomocné funkce ---
+function splitLastSimpleAB(raw){
+  let depth = 0, i = raw.length - 1;
+  const ops = ['+','−','×','÷'];
+  while (i >= 0){
+    const c = raw[i];
+    if (c === ')') depth++;
+    else if (c === '(') depth--;
+    else if (depth === 0 && ops.includes(c)) break;
+    i--;
+  }
+  if (i <= 0) return null;
+  const A = raw.slice(0, i).trim();
+  const op = raw[i];
+  const B = raw.slice(i+1).trim();
+  if (!A || !B) return null;
+  return { A, op, B, pos:i };
+}
+
+// rychlé vyhodnocení libovolného kousku výrazu (vrací číslo nebo NaN)
+function quickEvalToNumber(expr){
+  try{
+    const norm = normalizeInput(expr);
+    const toks  = tokenize(norm);
+    const rpn   = toRPN(toks);
+    const r     = evalRPN(rpn);
+    return (typeof r === 'number') ? +r : (r && r.t==='pair' ? NaN : +r);
+  }catch(_){ return NaN; }
+}
+
+// po vložení '%' zkus hned vypočítat A×/÷B% a uložit kontext
+function handlePercentImmediate(){
+  const ab = splitLastSimpleAB(state.raw);
+  if (!ab) return;
+  const {A, op, B} = ab;
+  if (!(op==='×' || op==='÷')) return;
+  if (!/%$/.test(B)) return;               // musí končit na %
+  const Araw = A;
+  const Braw = B.replace(/\s+$/,'').replace(/%$/,''); // bez %
+  const Aval = quickEvalToNumber(Araw);
+  const Bval = quickEvalToNumber(Braw);
+  const val  = quickEvalToNumber(state.raw); // celé A op B%
+
+  if (!isFinite(val)) return;
+  state.ans = val;
+  state.lastRes = { type:'num', v: val };
+  state.resultShown = true;
+  state.percentSuffix = '';                 // nikdy nepřidáváme „%“ za výsledek
+  state.lastPercentCtx = { Araw, Braw, op, A:Aval, B:Bval };  // pro +/− pokračování
+  updateResultView();
+}
+
+
 onPD(qs('#btnEq'), ()=>{ 
-  if(state.shift){ state.shift=false; insRaw('%'); return; }
-  if(state.resultShown && !state.editAfterResult && state.repeat){
+  if (state.shift){
+    state.shift = false;
+    insRaw('%');              // vlož „%“
+    handlePercentImmediate(); // a hned přepočti A×/÷B%
+    return;
+  }
+
+  // běžné "="
+  if (state.resultShown && !state.editAfterResult && state.repeat){
     const sym = prettyOp(state.repeat.op);
     state.raw = 'Ans' + sym + String(state.repeat.rhs);
     state.cursor = state.raw.length;
@@ -420,33 +1227,44 @@ onPD(qs('#btnEq'), ()=>{
   evaluate();
 });
 
+
 onPDAll('[data-act]', el=>{ const a=el.dataset.act; if(a==='del') back(); else if(a==='ac') ac(); });
-function handleModePick(d){
-  if(!state.modePick) return false;
-
-  if(d==='1')      state.drg='DEG';
-  else if(d==='2') state.drg='RAD';
-  else if(d==='3') state.drg='GRAD';
-  else return true;
-
-  state.modePick = false;
-  state.resultShown = false;
-  state.resultStr = '';
-  render();
-  return true;
-}
 
 function opAfterResult(sym){
+  // Speciální chování: po A × B% – okamžitý výsledek pro + / −
+  if ((sym==='+' || sym==='−') && state.resultShown && !state.editAfterResult &&
+      state.lastPercentCtx && state.lastPercentCtx.op === '×'){
+    const ctx = state.lastPercentCtx;
+    const delta = ctx.A * (ctx.B / 100);
+    const v = (sym === '+') ? (ctx.A + delta) : (ctx.A - delta);
+
+    // zobraz: řádek „A × B% +/−“, výsledek hned
+    state.raw = `${ctx.Araw} × ${ctx.Braw}% ${sym}`;
+    state.cursor = state.raw.length;
+
+    state.ans = v;
+    state.lastRes = { type:'num', v };
+   state.resultShown = true;
+  state.percentSuffix = '';
+  updateResultView();
+  return;
+
+  }
+
+  // běžné chování
   if(state.resultShown && !state.editAfterResult){
-    state.resultShown=false; state.resultStr='';
-    state.raw='Ans'+sym; state.cursor=state.raw.length; render(); 
-  }else{
+    state.editAfterResult = true;
+    state.raw = 'Ans' + sym;
+    state.cursor = state.raw.length;
+    render();
+  } else {
     insRaw(sym);
   }
 }
+
 onPDAll('[data-ins]', el=>{
   const t=el.dataset.ins;
-  if(state.modePick && /^[0-9]$/.test(t)){ handleModePick(t); return; }
+  if(state.modeStage>0 && /^[0-9]$/.test(t)){ handleMenuChoice(t); return; }
 
   if(t==='+'||t==='−'||t==='×'||t==='÷'){ opAfterResult(t); }
   else if(t==='('||t===')'||t===','||/^[0-9.]$/.test(t)){ insRaw(t); }
@@ -462,14 +1280,14 @@ function captureRepeat(tokens){
   if(i<0){ state.repeat=null; return; }
   state.repeat = { op: tokens[i].op, rhs: tokens[n-1].value };
 }
-
 /* ===== parser ===== */
 function normalizeInput(s){
   s=s.replace(/\s+/g,'').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+  s = s.replace(/RAN#(?!\s*\()/g, 'RAN#()'); // RAN# → RAN#() pokud nemá ( )
   s=autoCloseUnary(s);
   s=autoCloseRoot(s);
 
-  const sep    = '[∟ɹL]';
+  const sep    = '[∟]'; // pouze náš symbol, žádné "L" apod.
   const mixRe  = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
   const fracRe = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
 
@@ -484,8 +1302,23 @@ function normalizeInput(s){
 
   s=s.replace(/sin\^\(-1\)\(/g,'asin(').replace(/cos\^\(-1\)\(/g,'acos(').replace(/tan\^\(-1\)\(/g,'atan(');
   s=s.replace(/Ans/g,String(state.ans)).replace(/π/g,String(Math.PI));
-  s=s.replace(/(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′\s*(\d+(?:\.\d+)?)″/g,
-    (_,d,m,sec)=>String(dmsToDeg(parseFloat(d),parseFloat(m),parseFloat(sec))));
+  // plné DMS: d ° m ′ s ″
+s = s.replace(
+  /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′\s*(\d+(?:\.\d+)?)″/g,
+  (_, d, m, sec) => String(dmsToDeg(parseFloat(d), parseFloat(m), parseFloat(sec)))
+);
+// jen stupně + minuty: doplň sekundy = 0
+s = s.replace(
+  /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′/g,
+  (_, d, m) => String(dmsToDeg(parseFloat(d), parseFloat(m), 0))
+);
+// jen stupně: doplň minuty = 0, sekundy = 0
+// (není-li bezprostředně po ° další DMS symbol nebo číslo minut)
+s = s.replace(
+  /(-?\d+(?:\.\d+)?)°(?!\s*[\d′″])/g,
+  (_, d) => String(dmsToDeg(parseFloat(d), 0, 0))
+);
+
   s=s.replace(/(-?\d+(?:\.\d+)?)C(-?\d+(?:\.\d+)?)/g,'nCr($1,$2)');
   s=s.replace(/(-?\d+(?:\.\d+)?)P(-?\d+(?:\.\d+)?)/g,'nPr($1,$2)');
   return s;
@@ -657,22 +1490,38 @@ function evalRPN(rpn){
   const st=[];
   const toRad=v=>state.drg==='DEG'?v*Math.PI/180:state.drg==='GRAD'?v*Math.PI/200:v;
   const fromRad=r=>state.drg==='DEG'?r*180/Math.PI:state.drg==='GRAD'?r*200/Math.PI:r;
-  const map={
-    sin:a=>Math.sin(toRad(a)), cos:a=>Math.cos(toRad(a)), tan:a=>Math.tan(toRad(a)),
-    asin:a=>fromRad(Math.asin(a)), acos:a=>fromRad(Math.acos(a)), atan:a=>fromRad(Math.atan(a)),
-    sinh:a=>Math.sinh(a), cosh:a=>Math.cosh(a), tanh:a=>Math.tanh(a),
-    asinh:a=>Math.asinh(a), acosh:a=>Math.acosh(a), atanh:a=>Math.atanh(a),
-    log:a=>Math.log10(a), ln:a=>Math.log(a), exp:a=>Math.exp(a),
-    sqrt:a=>Math.sqrt(a), cbrt:a=>Math.cbrt(a), root:(y,x)=>x**(1/y),
-    abs:a=>Math.abs(a), ceil:a=>Math.ceil(a), floor:a=>Math.floor(a), inv:a=>1/a,
-    pow10:a=>10**a, pow:(a,b)=>a**b, nCr:(n,r)=>comb(n,r), nPr:(n,r)=>perm(n,r),
-    gcd:(a,b)=>gcd(a,b), lcm:(a,b)=>lcm(a,b), mod:(a,b)=>mod(a,b),
-    'RAN#':()=>Math.random(), Rnd:a=>roundSig(a,10),
-    Pol:(x,y)=>({t:'pair',a:Math.hypot(x,y),b:fromRad(Math.atan2(y,x))}),
-    Rec:(r,th)=>{const rad=toRad(th);return{t:'pair',a:r*Math.cos(rad),b:r*Math.sin(rad)};},
-    DMS:a=>({t:'dms',v:a}),
-    fact:a=>fact(a)
-  };
+const map={
+  // goniometrie – výstup “zacvakneme” na 0/±1 kvůli plovoucí čárce
+  sin:a=>cleanTrig(Math.sin(toRad(a))),
+  cos:a=>cleanTrig(Math.cos(toRad(a))),
+  tan:a=>cleanTrig(Math.tan(toRad(a))),
+
+  // inverzní – vstup zacvaknout do [-1,1]; výsledek podle DRG
+  asin:a=>fromRad(Math.asin(clampUnit(a))),
+  acos:a=>fromRad(Math.acos(clampUnit(a))),
+  atan:a=>fromRad(Math.atan(a)),
+
+  // hyperbolické – volitelné zacvaknutí (tanh ~ ±1, sinh ~ 0)
+  sinh:a=>cleanTrig(Math.sinh(a)),
+  cosh:a=>cleanTrig(Math.cosh(a)),
+  tanh:a=>cleanTrig(Math.tanh(a)),
+
+  asinh:a=>Math.asinh(a), acosh:a=>Math.acosh(a), atanh:a=>Math.atanh(a),
+
+  log:a=>Math.log10(a), ln:a=>Math.log(a), exp:a=>Math.exp(a),
+  sqrt:a=>Math.sqrt(a), cbrt:a=>Math.cbrt(a), root:(y,x)=>x**(1/y),
+  abs:a=>Math.abs(a), ceil:a=>Math.ceil(a), floor:a=>Math.floor(a), inv:a=>1/a,
+  pow10:a=>10**a, pow:(a,b)=>a**b, nCr:(n,r)=>comb(n,r), nPr:(n,r)=>perm(n,r),
+  gcd:(a,b)=>gcd(a,b), lcm:(a,b)=>lcm(a,b), mod:(a,b)=>mod(a,b),
+  'RAN#':()=>Math.random(), Rnd:a=>roundSig(a,10),
+
+  Pol:(x,y)=>({t:'pair',a:Math.hypot(x,y),b:fromRad(Math.atan2(y,x))}),
+  Rec:(r,th)=>{const rad=toRad(th);return{t:'pair',a:r*Math.cos(rad),b:r*Math.sin(rad)};},
+
+  DMS:a=>({t:'dms',v:a}),
+  fact:a=>fact(a)
+};
+
   for(const t of rpn){
     if(t.type==='num'){ st.push(t.value); continue; }
     if(t.type==='op'){
@@ -697,7 +1546,20 @@ function comb(n,r){ n=Math.round(n); r=Math.round(r); if(r<0||n<0||r>n) return N
 function perm(n,r){ n=Math.round(n); r=Math.round(r); if(r<0||n<0||r>n) return NaN; let p=1; for(let i=0;i<r;i++) p*=(n-i); return p; }
 function roundSig(x,n=12){ if(!isFinite(x)) return x; if(x===0) return 0; const d=Math.ceil(Math.log10(Math.abs(x))); const p=n-d; const m=10**p; return Math.round(x*m)/m; }
 function stripZeros(s){ return s.replace(/(\.\d*?[1-9])0+$/,'$1').replace(/\.0+$/,'').replace(/^-0$/,'0'); }
-function toEngineering(x){
+function clampUnit(x, eps=1e-12){
+  if (x > 1 && x < 1 + eps) return 1;
+  if (x < -1 && x > -1 - eps) return -1;
+  return x;
+}
+// zacvakni výstup trig funkcí na 0 / ±1, když je to “téměř” ono
+function cleanTrig(x, eps=1e-12){
+  if (!isFinite(x)) return x;
+  if (Math.abs(x) < eps) return 0;
+  if (Math.abs(x - 1) < eps) return 1;
+  if (Math.abs(x + 1) < eps) return -1;
+  return x;
+}
+  function toEngineering(x){
   if(!isFinite(x)) return String(x);
   if(x===0) return '0';
   const e=Math.floor(Math.log10(Math.abs(x)));
@@ -740,34 +1602,80 @@ function toFractionStr(x, mixed=true, maxDen=1e6){
   return (sign<0?'-':'') + body;
 }
 function degToDMS(x){
-  const s=x<0?-1:1; x=Math.abs(x);
-  const d=Math.floor(x), mf=(x-d)*60, m=Math.floor(mf), sec=Math.round((mf-m)*60*1e6)/1e6;
-  return (s<0?'-':'')+d+'°'+m+'′'+stripZeros(String(sec))+'″';
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+
+  let d = Math.floor(x);
+  let mf = (x - d) * 60;
+  let m = Math.floor(mf);
+  let s = (mf - m) * 60;
+
+  // zaokrouhlení sekund + normalizace přenosu 60″ → +1′, 60′ → +1°
+  s = Math.round(s * 1e6) / 1e6;         // přesnost na 1e-6 s
+  if (s >= 60) { s -= 60; m += 1; }
+  if (m >= 60) { m -= 60; d += 1; }
+
+  const prefix = sign < 0 ? '-' : '';
+  return prefix + d + '°' + m + '′' + stripZeros(String(s)) + '″';
 }
+
 function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/60+s/3600); }
 
 function formatNumWithOptions(v){
   if(!isFinite(v)) return String(v);
   const x = roundSig(v,12);
+
   if(state.dmsDisplay) return degToDMS(x);
   if(state.eng)        return toEngineering(x);
   if(state.frac)       return toFractionStr(x,state.fracMixed);
+
   const ax = Math.abs(x);
+  // Malé/velké hodnoty: vždy hezká vědecká notace
   if(ax !== 0 && (ax >= 1e8 || ax < 1e-8)){
     return toScientificAuto(x);
   }
-  return stripZeros(x.toPrecision(12));
+
+  // Jinak použijeme toPrecision – ale pokud by vrátilo e-zápis,
+  // vynutíme naši vědeckou notaci s ×10^
+  const s = stripZeros(x.toPrecision(12));
+  if (/[eE]/.test(s)) {
+    return toScientificAuto(x);
+  }
+  return s;
 }
+
 function updateResultView(){
   if(!state.lastRes){ state.resultStr=''; state.resultShown=false; render(); return; }
-  if(state.lastRes.type==='num'){ state.resultStr = formatNumWithOptions(state.lastRes.v); }
+ if(state.lastRes.type==='num'){
+  const body = formatNumWithOptions(state.lastRes.v);
+  state.resultStr = body + (state.percentSuffix || '');
+}
   else if(state.lastRes.type==='pair'){ state.resultStr = `(${formatNumWithOptions(state.lastRes.a)}, ${formatNumWithOptions(state.lastRes.b)})`; }
   state.resultShown=true; render();
 }
 function evaluate(){
   try{
-    const hadSep = /[∟ɹL]/.test(state.raw);
-    const norm = normalizeInput(state.raw);
+        // --- Zachyť jednotku vstupu: DEG (°/DMS), RAD (…r), GRAD (…g)
+    const rawTrim = (state.raw || '').trim();
+    let srcUnit = null;      // 'DEG' | 'RAD' | 'GRAD' | null
+    let evalRaw = rawTrim;   // co skutečně pošleme do parseru
+
+    // pokud je kdekoli °/′/″, bereme to jako stupně (DEG)
+    if (/[°′″]/.test(rawTrim)) {
+      srcUnit = 'DEG';
+   } else if (/r\s*$/i.test(rawTrim)) {
+  srcUnit = 'RAD';
+  evalRaw = rawTrim.replace(/r\s*$/i, '').trim();
+} else if (/g\s*$/i.test(rawTrim)) {
+  srcUnit = 'GRAD';
+  evalRaw = rawTrim.replace(/g\s*$/i, '').trim();
+}
+
+
+    const hadSep = /[∟]/.test(state.raw);
+const hadDMS = /[°′″]/.test(state.raw);
+const norm = normalizeInput(evalRaw);
+
     const toks = tokenize(norm);
     const rpn  = toRPN(toks);
     let res    = evalRPN(rpn);
@@ -779,12 +1687,41 @@ function evaluate(){
     }else{
       state.ans=+res; state.lastRes={type:'num',v:+res}; captureRepeat(toks);
     }
+    // --- Jednotkový převod na cílový režim (state.drg), pokud se rozpoznala zdrojová jednotka
+    if (srcUnit && state.lastRes && state.lastRes.type === 'num') {
+      let v = +state.lastRes.v;
+      const to = state.drg;     // 'DEG' | 'RAD' | 'GRAD'
+      if (srcUnit === 'DEG') {
+        if (to === 'RAD') v = v * Math.PI / 180;
+        else if (to === 'GRAD') v = v * 10 / 9; // 360° = 400g
+        // to === 'DEG' => beze změny
+      } else if (srcUnit === 'RAD') {
+        if (to === 'DEG') v = v * 180 / Math.PI;
+        else if (to === 'GRAD') v = v * 200 / Math.PI;
+      } else if (srcUnit === 'GRAD') {
+        if (to === 'DEG') v = v * 0.9;         // 400g = 360°
+        else if (to === 'RAD') v = v * Math.PI / 200;
+      }
+      state.ans = +v;
+      state.lastRes = { type:'num', v:+v };
+      // pokud cíl není DEG, nechceme DMS formát (chceme desetinné rad/grad)
+if (srcUnit && state.drg !== 'DEG') {
+  state.dmsDisplay = false;
+}
+      // pokud chceš při cílovém DEG rovnou DMS formát, odkomentuj:
+      // if (to === 'DEG') state.dmsDisplay = true;
+    }
 
     if(hadSep){ state.frac=true; state.fracMixed=true; }
-    else { state.frac=false; }
+else { state.frac=false; }
 
-    state.editAfterResult=false;
-    updateResultView();
+// Pokud uživatel psal DMS, ukaž výsledek rovnou ve stupních-minutách-vteřinách
+if (hadDMS && state.drg === 'DEG') { state.dmsDisplay = true; }
+
+
+state.editAfterResult=false;
+updateResultView();
+
   }catch(_){
     state.lastRes=null; state.resultStr='Error';
     state.resultShown=true; state.editAfterResult=false; state.repeat=null; render();
@@ -794,6 +1731,7 @@ function evaluate(){
 /* init */
 render();
 fitToViewport();
+updateExamUI();
 
 /* klávesnice */
 addEventListener('keydown',e=>{
@@ -804,8 +1742,15 @@ addEventListener('keydown',e=>{
   if(k==='Escape'){e.preventDefault();ac();return;}
   if(k==='ArrowLeft'){e.preventDefault();moveCursor(-1);return;}
   if(k==='ArrowRight'){e.preventDefault();moveCursor(+1);return;}
-  if(/^[0-9]$/.test(k)){ if(state.modePick){ handleModePick(k); } else { insRaw(k); } return; }
-  if(k==='('||k===')'||k===','||k==='.'||k==='%'){insRaw(k);return;}
+  if(/^[0-9]$/.test(k)){
+    if(state.modeStage>0){ handleMenuChoice(k); }
+    else { insRaw(k); }
+    return;
+  }
+
+ if(k==='('||k===')'||k===','||k==='.'){insRaw(k);return;}
+if(k==='%'){ insRaw('%'); handlePercentImmediate(); return; }
+
   if(k==='^'){opAfterResult('^');return;}
   if(k==='+'){opAfterResult('+');return;}
   if(k==='-'){opAfterResult('−');return;}
@@ -816,10 +1761,433 @@ addEventListener('keydown',e=>{
 </script>
 
 <script>
-  // Registrace service workeru – co nejdřív po loadu
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+    const SW_URL = '/Bernio/sw.js?v=2025-09-27b'; // zvyšuj verzi při deployi
+    const FLAG = 'updateReady';
+
+    const ui = {
+      bar: null, btn: null,
+      show() {
+        if (!this.bar) {
+          this.bar = document.createElement('div');
+          this.bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#111827;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;z-index:99999';
+          this.bar.innerHTML = '<span>Je dostupná nová verze.</span>';
+          this.btn = document.createElement('button');
+          this.btn.textContent = 'Aktualizovat';
+          this.btn.style.cssText = 'margin-left:auto;background:#10b981;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer';
+          this.bar.appendChild(this.btn);
+          document.body.appendChild(this.bar);
+          this.btn.addEventListener('click', () => {
+            // aktivuj novou verzi
+            if (window.__swWaiting) {
+              window.__swWaiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+        this.bar.style.display = 'flex';
+      },
+      hide() { if (this.bar) this.bar.style.display = 'none'; }
+    };
+
+    function markReady(on) {
+      try { localStorage.setItem(FLAG, on ? '1' : ''); } catch {}
+    }
+    function isMarked() {
+      try { return localStorage.getItem(FLAG) === '1'; } catch { return false; }
+    }
+
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register(SW_URL, { scope: '/Bernio/' });
+        
+        // Každé spuštění aktivně zkusí najít update
+        reg.update().catch(()=>{});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    navigator.serviceWorker.getRegistration()
+      .then(reg => reg && reg.update().catch(()=>{}));
+  }
+});
+
+        // Když se objeví nová verze:
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nová verze je připravená (waiting)
+              window.__swWaiting = reg.waiting || sw; // cache waiting
+              markReady(true);
+              ui.show();
+            }
+          });
+        });
+
+        // Pokud je čekající verze už teď (třeba po reloadu)
+        if (reg.waiting) {
+          window.__swWaiting = reg.waiting;
+          markReady(true);
+          ui.show();
+        } else if (isMarked()) {
+          // Bezpečnostní síť: když máme flag, ale waiting není → ještě jednou update()
+          reg.update().catch(()=>{});
+        }
+
+        // Když se aktivuje nový controller (po SKIP_WAITING) → reload
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          markReady(false);
+          location.reload();
+        });
+
+        // Pokud při dalším spuštění už běží nová verze, flag smažeme (není co nabízet)
+        if (!navigator.serviceWorker.controller) {
+          // první instalace – žádná lišta
+          markReady(false);
+        }
+      } catch (e) {
+        console.warn('SW reg failed', e);
+      }
+    });
   }
 </script>
+
+
+
+<!-- QR overlay (statický náhled) -->
+<div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;z-index:9999">
+  <div style="background:#fff;border-radius:16px;padding:16px;color:#111;text-align:center">
+   <img id="qrImg" src="/Bernio/icons/qr.png?v=2" alt="QR kód" width="280" height="280">
+    <div id="qrUrl" style="font:14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto;margin-top:8px;word-break:break-all"></div>
+  </div>
+</div>
+<script>
+(() => {
+  if (window.__qrInit) return; window.__qrInit = true;
+  const qrBackdrop = document.getElementById('qrBackdrop');
+  const btnQR = document.getElementById('btnQR');
+  const qrUrl = document.getElementById('qrUrl');
+
+  function isOpen(){ return qrBackdrop && qrBackdrop.style.display !== 'none'; }
+  function openQR(){
+    if (!qrBackdrop) return;
+    qrBackdrop.style.display = 'grid';
+    if(qrUrl) qrUrl.textContent = location.href;
+    if (location.hash !== '#qr') history.pushState({ qr: true }, '', '#qr');
+  }
+  function closeQR(){
+    if (!qrBackdrop) return;
+    qrBackdrop.style.display = 'none';
+    if (location.hash === '#qr') history.back();
+  }
+
+  btnQR && btnQR.addEventListener('pointerdown', openQR, { passive: true });
+  qrBackdrop && qrBackdrop.addEventListener('pointerdown', (e) => { if (e.target === qrBackdrop) closeQR(); }, { passive: true });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) closeQR(); });
+  window.addEventListener('popstate', () => { if (location.hash !== '#qr' && qrBackdrop) qrBackdrop.style.display = 'none'; });
+  if (location.hash === '#qr') { history.replaceState(null, '', location.pathname + location.search); if (qrBackdrop) qrBackdrop.style.display = 'none'; }
+})();
+</script>
+
+<script>
+const QR = (() => {
+  let overlay, video, note, btnX, running = false, stopCb = null;
+  let pickBtn, fileInput, currentStream = null, raf = 0;
+  let stopReader = null;
+
+  // ➕ Nové:
+  const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent || '');
+  let suspended = false;  // když otevřeme picker, pozastavíme sken
+  let _resume = null;     // funkce, kterou naplní start() pro návrat ke skenu
+
+  function releaseCamera(){
+    try{
+      if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); }
+    }catch(_){}
+    currentStream = null;
+    if (video) video.srcObject = null;
+  }
+
+  function buildUI(){
+    if (overlay) return;
+
+    overlay = document.createElement('div');
+    overlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);place-items:center;z-index:99999";
+
+    const box = document.createElement('div');
+    box.style.cssText = "background:#111;color:#fff;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:center;max-width:92vw";
+
+    video = document.createElement('video');
+    video.playsInline = true;
+    video.muted = true;
+    video.style.cssText = "width:min(92vw,520px);max-height:70vh;border-radius:8px;background:#000";
+
+    note = document.createElement('div');
+    note.style.cssText = "font:600 16px/1.4 system-ui,Segoe UI,Roboto;opacity:.95;text-align:center";
+
+    btnX = document.createElement('button');
+    btnX.textContent = "Zavřít";
+    btnX.style.cssText = "position:absolute;right:12px;top:12px;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer";
+    btnX.addEventListener('pointerdown', () => stop(), { passive:true });
+
+ // „Nahrát fotku QR“ uprostřed dole
+pickBtn = document.createElement('button');
+pickBtn.textContent = 'Nahrát fotku QR';
+pickBtn.style.cssText =
+  "position:absolute;left:50%;bottom:12px;transform:translateX(-50%);" +
+  "background:#3b82f6;border:none;color:#fff;padding:10px 14px;" +
+  "border-radius:999px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.2)";
+
+// průhledný input přes tlačítko – uživatelský tap jde přímo do inputu
+fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'image/*';
+fileInput.multiple = false;
+// ➕ důležité pro iOS „Pořídit snímek“ zadní kamerou:
+fileInput.setAttribute('capture', 'environment');
+
+// klíčové: NE display:none; musí být „viditelný“ (byť průhledný)
+fileInput.style.cssText =
+  "position:absolute;left:50%;bottom:12px;transform:translateX(-50%);" +
+  "opacity:0;width:calc(100vw - 40px);max-width:320px;height:44px;" +
+  "cursor:pointer;"; // pokryje tlačítko
+
+// ➕ před otevřením pickeru POZASTAV skenování úplně (iOS je na to citlivý)
+fileInput.addEventListener('pointerdown', () => {
+  // pozastavený stav – po návratu z pickeru se vrátíme do skenu
+  suspended = true;
+  cancelAnimationFrame(raf);
+  if (stopReader) { try { stopReader(); } catch {} }
+  stopReader = null;
+  releaseCamera();
+}, { passive: true });
+
+// po výběru souboru / pořízení fotky
+fileInput.addEventListener('change', onPickFile);
+
+// a přimontuj do overlaye
+overlay.appendChild(pickBtn);
+overlay.appendChild(fileInput);
+box.appendChild(video);
+box.appendChild(note);
+overlay.appendChild(box);
+overlay.appendChild(btnX);
+
+
+
+    document.body.appendChild(overlay);
+    overlay.addEventListener('pointerdown', (e) => {
+  if (e.target === overlay) stop();
+}, { passive:true });
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && overlay && overlay.style.display !== 'none') stop();
+});
+  }
+
+  function parseExamPayload(text){
+    try {
+      const outer = JSON.parse(text);
+      if (outer && outer.payload) return JSON.parse(outer.payload);
+    } catch {}
+    try {
+      if (/^https?:\/\//i.test(text)) {
+        const u = new URL(text);
+        const p = u.searchParams.get('payload') || u.searchParams.get('p') || u.hash.replace(/^#/,'');
+        if (p) return JSON.parse(decodeURIComponent(p));
+        const code = u.searchParams.get('code');
+        const type = (u.searchParams.get('type') || 'START').toUpperCase();
+        const ts = +(u.searchParams.get('ts') || 0);
+        const expSec = +(u.searchParams.get('expSec') || 0);
+        if (code) return { code, type, ts, expSec };
+      }
+    } catch {}
+    if (/^[A-Za-z0-9]{1,8}\|/.test(text)) {
+      const [code, type='START', ts='0', expSec='0'] = text.split('|');
+      return { code, type: String(type).toUpperCase(), ts:+ts, expSec:+expSec };
+    }
+    return null;
+  }
+
+  async function ensureFallback(){
+    if ('BarcodeDetector' in window) return null;
+    if (window.ZXing) return window.ZXing;
+    try {
+      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="./Bernio/vendor/zxing.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+      return window.ZXing;
+    } catch {
+      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+      return window.ZXing;
+    }
+  }
+async function restartLiveScan(noteText) {
+  if (note && noteText) note.textContent = noteText;
+
+  // Ukonči případného čteče a kameru
+  cancelAnimationFrame(raf);
+  if (stopReader) { try { stopReader(); } catch {} }
+  stopReader = null;
+  releaseCamera();
+
+  // Znovu otevřít kameru
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+  } catch {
+    if (note) note.textContent = 'Kameru nelze otevřít. Zkontrolujte oprávnění.';
+    return;
+  }
+  currentStream = stream;
+  video.srcObject = stream;
+  try { await video.play(); } catch {}
+
+  // Rovnou startni ZXing (na iOS spolehlivější)
+  await startZXing();
+}
+
+
+  function deliver(text){
+    const inner = parseExamPayload(text) || {};
+    stop();
+   if ((inner.type || 'START').toUpperCase() === 'START') Exam.start(inner.code);
+  else Exam.finish();
+  }
+function rotateCanvas(srcCanvas, deg){
+  const rad = (deg % 360) * Math.PI / 180;
+  const s = Math.sin(rad), c = Math.cos(rad);
+  const w = srcCanvas.width, h = srcCanvas.height;
+  // nový rozměr obálky
+  const nw = Math.abs(w * c) + Math.abs(h * s);
+  const nh = Math.abs(w * s) + Math.abs(h * c);
+  const dst = document.createElement('canvas');
+  dst.width = Math.max(1, Math.round(nw));
+  dst.height = Math.max(1, Math.round(nh));
+  const ctx = dst.getContext('2d', { willReadFrequently: true });
+  ctx.translate(dst.width / 2, dst.height / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(srcCanvas, -w / 2, -h / 2);
+  return dst;
+}
+
+async function onPickFile(){
+  const f = fileInput.files && fileInput.files[0];
+  fileInput.value = ''; // reset pro další výběr
+
+  if (!f) {
+    // Uživatel zrušil → rovnou obnovíme live scan, ať nemusí nic mačkat
+    restartLiveScan('Namiřte na START QR…');
+    return;
+  }
+
+  let text = null;
+  try {
+    await ensureFallback();
+    if (window.ZXing && ZXing.BrowserMultiFormatReader) {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+      const reader = new ZXing.BrowserMultiFormatReader(hints);
+
+      const url = URL.createObjectURL(f);
+      const img = document.createElement('img');
+      img.src = url;
+      await img.decode().catch(()=>{});
+      const res = await reader.decodeFromImage(img).catch(()=>null);
+      URL.revokeObjectURL(url);
+
+      if (res) text = res.getText && res.getText();
+    }
+  } catch(_) {}
+
+  if (text) {
+    // Úspěch → deliver sám zavře overlay (volá stop())
+    deliver(text);
+    return;
+  }
+
+  // Neúspěch → nezavírej overlay. Okamžitě znova živý sken.
+  restartLiveScan('QR z fotky se nepodařilo přečíst. Zkuste namířit kameru…');
+}
+
+
+async function start(kind){ // 'START' | 'END'
+  if (running) return;
+  buildUI();
+  overlay.style.display = 'grid';
+  note.textContent = (kind === 'START') ? 'Namiřte na START QR…' : 'Namiřte na END QR…';
+  running = true;
+
+  // kamera
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    });
+  } catch {
+    note.textContent = 'Kameru nelze otevřít. Zkontrolujte oprávnění pro kameru.';
+    running = false;
+    return;
+  }
+
+  currentStream = stream;
+  video.srcObject = stream;
+  await video.play().catch(()=>{});
+
+  // ✅ rovnou startni ZXing (žádný BarcodeDetector, žádné fallback smyčky)
+  await startZXing();
+}
+
+
+
+
+  // 2) ZXing fallback (nebo primární, když BD není)
+async function startZXing(){
+  await ensureFallback();
+  try {
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+    const reader = new ZXing.BrowserMultiFormatReader(hints);
+    stopReader = () => { try { reader.reset(); } catch {} };
+
+    reader.decodeFromVideoElementContinuously(video, (res /*, err*/) => {
+      if (!running) return;
+      if (res) {
+        const text = res.getText && res.getText();
+        if (text) {
+          // pokud máš helper maybeDeliver, klidně volej ten:
+          // maybeDeliver(text);
+          deliver(text);
+        }
+      }
+    });
+  } catch {
+    if (note) note.textContent = 'Čtečku se nepodařilo inicializovat.';
+  }
+}
+ 
+function stop(){
+  running = false;
+  suspended = false;
+  _resume = null;
+  cancelAnimationFrame(raf);
+  if (stopReader) { try { stopReader(); } catch {} }
+  stopReader = null;
+  releaseCamera();
+  if (overlay) overlay.style.display = 'none';
+}
+
+  return { start, stop };
+})();
+
+function startExamScan(){ QR.start('START'); }
+function endExamScan(){   QR.start('END'); }
+</script>
+
+
+
 </body>
 </html>
+
+
