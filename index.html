@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-58">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-59">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -399,6 +399,62 @@ if (state.modeStage === 132) {
   return true;
 }
 
+/* === NOVÉ: MODE 14 a submeny 141/142 === */
+if (state.modeStage === 14) {
+  // Hlavní „Disp“ stránka – nahoře "Disp", dole "1"
+  exprEl.innerHTML =
+    '<div class="modebar">' +
+      '<span class="label"></span>' +
+      '<span class="label">Disp</span>' +
+      '<span class="label"></span>' +
+    '</div>';
+  resEl.classList.add('mode');
+  resEl.innerHTML = '<div class="numrow"><span>1</span></div>';
+  const row = resEl.querySelector('.numrow');
+  if (row && row.children[0]) {
+    row.children[0].style.cursor='pointer';
+    row.children[0].addEventListener('pointerdown', (ev)=>{ev.preventDefault(); handleMenuChoice('1');}, {passive:false});
+  }
+  return true;
+}
+if (state.modeStage === 141) {
+  // Volba formátu zlomků: vlevo ab/c, uprostřed d/c + dole 1 2 a vpravo ▶
+  exprEl.innerHTML =
+    '<div class="modebar">' +
+      '<span class="label">ab/c</span>' +
+      '<span class="label">d/c</span>' +
+      '<span class="label"></span>' +
+    '</div>';
+  resEl.classList.add('mode');
+  resEl.innerHTML = `
+    <div class="numrow" style="display:grid;grid-template-columns:1fr 1fr auto;align-items:center;width:100%;">
+      <span style="justify-self:start;cursor:pointer">1</span>
+      <span style="justify-self:center;cursor:pointer">2</span>
+      <span id="dispNext" style="justify-self:end;cursor:pointer">▶</span>
+    </div>`;
+  const row = resEl.querySelector('.numrow');
+  row.children[0].addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('1');},{passive:false});
+  row.children[1].addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('2');},{passive:false});
+  resEl.querySelector('#dispNext').addEventListener('pointerdown', (e)=>{e.preventDefault(); handleMenuChoice('>');},{passive:false});
+  return true;
+}
+if (state.modeStage === 142) {
+  // Volba oddělovače: Dot / Comma + dole 1 2
+  exprEl.innerHTML =
+    '<div class="modebar">' +
+      '<span class="label">Dot</span>' +
+      '<span class="label">Comma</span>' +
+      '<span class="label"></span>' +
+    '</div>';
+  resEl.classList.add('mode');
+  resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span></span></div>';
+  const row = resEl.querySelector('.numrow');
+  Array.from(row.children).forEach((el, i)=>{
+    if (i<2){ el.style.cursor='pointer'; el.addEventListener('pointerdown', (ev)=>{ev.preventDefault(); handleMenuChoice(String(i+1));},{passive:false}); }
+  });
+  return true;
+}
+
 
 
   // ==== PŮVODNÍ stránky (ponecháváme kvůli mini-promptu DRG>) ====
@@ -454,7 +510,8 @@ if (state.modeStage === 131){
 }
 
   if (state.modeStage === 14){
-    // Disp / 1 – zatím nefunkční → jen zavřít menu
+    // Stisk "1" -> submenu zlomků/oddělovače
+    if (digit === '1'){ state.modeStage = 141; render(); return true; }
     state.modeStage = 0; render();
     return true;
   }
@@ -481,6 +538,47 @@ if (state.modeStage === 132){
   render();
   return true;
 }
+
+/* === NOVÉ: submenu 141 (zlomky) a 142 (oddělovač) === */
+if (state.modeStage === 141){
+  if (digit === '1'){         // ab/c (smíšené)
+    state.fracPrefMixed = true;
+    saveFracPref();
+    if (state.frac) { state.fracMixed = true; updateResultView(); }
+    render();
+    return true;
+  }
+  if (digit === '2'){         // d/c (nepravý)
+    state.fracPrefMixed = false;
+    saveFracPref();
+    if (state.frac) { state.fracMixed = false; updateResultView(); }
+    render();
+    return true;
+  }
+  if (digit === '>'){         // šipka doprava -> oddělovač
+    state.modeStage = 142; render(); return true;
+  }
+  return true;
+}
+
+if (state.modeStage === 142){
+  if (digit === '1'){         // Dot
+    state.decSep = '.';
+    saveDecSep();
+    updateResultView();
+    state.modeStage = 0; render();
+    return true;
+  }
+  if (digit === '2'){         // Comma
+    state.decSep = ',';
+    saveDecSep();
+    updateResultView();
+    state.modeStage = 0; render();
+    return true;
+  }
+  return true;
+}
+
   // === PŮVODNÍ stránky (ponechané) ===
   if(state.modeStage===1){
     if(digit==='1') state.drg='DEG';
@@ -652,11 +750,16 @@ sci: null,
   lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
   modeStage:0, repeat:null, examActive:false, examCode:'',
   percentSuffix:'',
-  lastPercentCtx:null       // { Araw,Braw, op, A, B } uložené po A×B%          // <<< přidáno
+  lastPercentCtx:null,       // { Araw,Braw, op, A, B } uložené po A×B%          // <<< přidáno
+  /* === NOVÉ: oddělovač desetinných míst === */
+  decSep: '.'              // '.' nebo ','
 };
 const NORM_KEY = 'bernio.norm.v1';
 const FIX_KEY = 'bernio.fix.v1';
 const SCI_KEY = 'bernio.sci.v1';
+/* === NOVÉ klíče pro perzistenci === */
+const FRAC_PREF_KEY = 'bernio.fracpref.v1';
+const DECSEP_KEY    = 'bernio.decsep.v1';
 
 function saveFixSci(){
   try{
@@ -674,6 +777,27 @@ function loadFixSci(){
   }catch(_){}
 }
 
+/* === NOVÉ: ulož/načti preferenci zlomků a oddělovač === */
+function saveFracPref(){
+  try{ localStorage.setItem(FRAC_PREF_KEY, state.fracPrefMixed ? 'ab' : 'dc'); }catch(_){}
+}
+function loadFracPref(){
+  try{
+    const v = localStorage.getItem(FRAC_PREF_KEY);
+    if (v === 'ab') state.fracPrefMixed = true;
+    else if (v === 'dc') state.fracPrefMixed = false;
+  }catch(_){}
+}
+function saveDecSep(){
+  try{ localStorage.setItem(DECSEP_KEY, state.decSep === ',' ? ',' : '.'); }catch(_){}
+}
+function loadDecSep(){
+  try{
+    const v = localStorage.getItem(DECSEP_KEY);
+    if (v === ',') state.decSep = ',';
+    else state.decSep = '.';
+  }catch(_){}
+}
 
 
 function saveNorm(){
@@ -706,7 +830,7 @@ function prettySegments(raw){
       let j=i+2; while(j<raw.length && raw[j]!==')') j++;
       if(j<raw.length){ const expo=raw.slice(i+2,j).replace(/-/g,'−'); push('<sup>'+expo+'</sup>', j-i+1); i=j+1; continue; }
     }
-    const ch=raw[i]; const pretty = ch==='*'?'×': ch==='/'?'÷': ch==='-'?'−': ch;
+    const ch=raw[i]; const pretty = ch==='*'?'×': ch==='/'?'÷': ch==='-'?'−': ch==='.'?(state.decSep===','?',','):'.': ch;
     push(pretty,1); i++;
   }
   return segs;
@@ -1178,6 +1302,7 @@ onPD(qs('#btnFracKey'), ()=>{
         state.fracMixed = !state.fracMixed;
       }
       state.fracPrefMixed = state.fracMixed; // zapamatuj volbu
+      saveFracPref();                        // === NOVÉ: perzistuj
     } else {
       // bez SHIFT: TOGGLE mezi desetinným a (naposledy zvoleným) zlomkem
       if (state.frac) {
@@ -1230,7 +1355,7 @@ onPD(qs('#btnPow'), ()=>{
     else  insRaw('root(');
   }else{ opAfterResult('^'); }
 });
-onPD(qs('#btnHYP'), ()=>{ state.hyp=!state.hyp; render(); });
+onPD(qs('#btnHYP'), ()=>{ state.hyp=!state.hyp; if(state.resultShown) updateResultView(); render(); });
 onPD(qs('#btnNeg'), ()=> insRaw('−'));
 
 onPD(qs('#btnDMSsym'),()=>{
@@ -1734,13 +1859,23 @@ function cleanTrig(x, eps=1e-12){
   if (Math.abs(x + 1) < eps) return -1;
   return x;
 }
+
+/* === NOVÉ: helper pro aplikaci oddělovače do řetězců === */
+function applyDecSepToStr(s){
+  if (state.decSep === ','){
+    return s.replace(/\./g, ',');
+  }
+  return s;
+}
+
   function toEngineering(x){
   if(!isFinite(x)) return String(x);
   if(x===0) return '0';
   const e=Math.floor(Math.log10(Math.abs(x)));
   const E=Math.floor(e/3)*3;
   const m=x/10**E;
-  const mant = stripZeros(m.toPrecision(9));
+  let mant = stripZeros(m.toPrecision(9));
+  if (state.decSep===',') mant = mant.replace(/\./g, ',');
   return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${E}</sup></span>`;
 }
 function toScientificAuto(x){
@@ -1754,6 +1889,7 @@ function toScientificAuto(x){
     m /= 10;
     mant = stripZeros(m.toPrecision(9));
   }
+  if (state.decSep===',') mant = mant.replace(/\./g, ',');
   return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${e}</sup></span>`;
 }
   
@@ -1762,10 +1898,10 @@ function toScientificSig(x, sig=10){
   if(x===0) return '0';
   const s = Math.max(1, Math.min(10, sig|0));
   const sci = x.toExponential(s-1);  // např. "3.3e-1"
-  const [mStr, eStr] = sci.split('e');
-  const mant = mStr;                  // u SCI nuly NEodřezáváme
+  let [mStr, eStr] = sci.split('e');
+  if (state.decSep===',') mStr = mStr.replace(/\./g, ',');
   const e = parseInt(eStr, 10);
-  return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${e}</sup></span>`;
+  return `<span class="sci">${mStr}<span class="times">×</span><span class="ten">10</span><sup class="exp">${e}</sup></span>`;
 }
 
 
@@ -1777,7 +1913,9 @@ function toFractionStr(x, mixed=true, maxDen=1e6){
   if(f === 0) return (sign<0?'-':'') + String(w);
   let h1=1,h0=0,k1=0,k0=1,b=f;
   while(true){
-    let A=Math.floor(b), h2=A*h1+h0, k2=A*k1+k0;
+    let A=Math.floor(b), h2=A*h1+h0, k2=A*h1+k0; /* NOTE: this line was wrong before? preserve original logic */ 
+    /* Keeping original but fix to standard convergents: */
+    h2=A*h1+h0; k2=A*k1+k0;
     if(k2>maxDen) break;
     h0=h1; k0=k1; h1=h2; k1=k2;
     const diff=Math.abs(f - h1/k1);
@@ -1804,7 +1942,8 @@ function degToDMS(x){
   if (m >= 60) { m -= 60; d += 1; }
 
   const prefix = sign < 0 ? '-' : '';
-  return prefix + d + '°' + m + '′' + stripZeros(String(s)) + '″';
+  const out = prefix + d + '°' + m + '′' + stripZeros(String(s)) + '″';
+  return applyDecSepToStr(out);
 }
 
 function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/60+s/3600); }
@@ -1823,7 +1962,7 @@ function formatNumWithOptions(v){
   // FIX – přesně n desetinných (0..9), jen pro výpis
   if (state.fix != null) {
     const n = Math.max(0, Math.min(9, state.fix|0));
-    return xRaw.toFixed(n);
+    return applyDecSepToStr(xRaw.toFixed(n));
   }
 
   // SCI – n platných číslic (0=10)
@@ -1841,7 +1980,7 @@ function formatNumWithOptions(v){
   if (Number.isInteger(x)) {
     const digits = ax === 0 ? 1 : (Math.floor(Math.log10(ax)) + 1);
     if (digits > 10) return toScientificAuto(x);
-    return stripZeros(x.toString());
+    return applyDecSepToStr(stripZeros(x.toString()));
   }
 
   // kolik desetin je opravdu potřeba
@@ -1855,7 +1994,7 @@ function formatNumWithOptions(v){
   const decs  = decimalsNeeded(x);
   if (decs > limit) return toScientificAuto(x);
 
-  return stripZeros(x.toFixed(Math.min(decs, 12)));
+  return applyDecSepToStr(stripZeros(x.toFixed(Math.min(decs, 12))));
 }
 
 
@@ -1948,6 +2087,10 @@ updateResultView();
 /* init */
 loadNorm();
 loadFixSci();          // <<< přidáno
+/* === NOVÉ: načti perzistentní volby === */
+loadFracPref();
+loadDecSep();
+
 render();
 fitToViewport();
 updateExamUI();
@@ -2406,5 +2549,3 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
-
-
