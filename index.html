@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-57">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-58">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -1859,11 +1859,7 @@ function formatNumWithOptions(v){
 }
 
 
-  // 3) Nechceme zbytečné e-zápisy: ukaž běžný zápis s rozumným počtem míst
-  //    (zarovnáme na skutečný počet potřebných desetinných míst)
-  return stripZeros(x.toFixed(Math.min(decs, 12)));
-}
-
+ 
 
 function updateResultView(){
   if(!state.lastRes){ state.resultStr=''; state.resultShown=false; render(); return; }
@@ -2410,4 +2406,5 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
