@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-54">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-55">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -377,6 +377,19 @@ if (state.modeStage === 131) {
   }
   return true;
 }
+if (state.modeStage === 132) {
+  // Zadávací řádek: "Sci 0~9?" uprostřed; čísla volíš běžnými tlačítky 0–9
+  exprEl.innerHTML =
+    '<div class="modebar">' +
+      '<span class="label"></span>' +
+      '<span class="label">Sci 0~9?</span>' +
+      '<span class="label"></span>' +
+    '</div>';
+  // jen držíme výšku spodního řádku
+  resEl.classList.add('mode');
+  resEl.innerHTML = '<div class="numrow"><span>0</span><span>1</span><span>2</span></div>';
+  return true;
+}
 
 
   // ==== PŮVODNÍ stránky (ponecháváme kvůli mini-promptu DRG>) ====
@@ -407,21 +420,37 @@ function handleMenuChoice(digit){
     return true;
   }
 if (state.modeStage === 13){
-  // 1=Fix, 2=Sci (zatím ne), 3=Norm → otevři "Norm 1~2?"
-  if (digit === '3'){
-    state.modeStage = 131; // zobraz prompt Norm 1~2?
+  // 1=Fix (zatím neřešíme), 2=Sci → "Sci 0~9?", 3=Norm → "Norm 1~2?"
+  if (digit === '2'){
+    state.modeStage = 132; // Sci prompt
+    render();
+  } else if (digit === '3'){
+    state.modeStage = 131; // Norm prompt
     render();
   } else {
-    state.modeStage = 0;   // Fix/Sci teď neřešíme
+    state.modeStage = 0;   // Fix teď neřešíme
     render();
   }
   return true;
 }
+
 if (state.modeStage === 131){
   if (digit === '1') state.norm = 1;
   else if (digit === '2') state.norm = 2;
   // nic nevypisujeme na displej – jen zavřít menu
    saveNorm();
+  state.modeStage = 0;
+  render();
+  return true;
+}
+if (state.modeStage === 132){
+  // Sci 0~9? → 0 = deset platných číslic
+  const n = Number(digit);
+  if (!Number.isNaN(n)){
+    state.sci = (n === 0) ? 10 : n;  // 0 = 10
+    state.fix = null;                // SCI a FIX jsou exkluzivní
+    saveFixSci();
+  }
   state.modeStage = 0;
   render();
   return true;
@@ -598,6 +627,8 @@ const Exam = (() => {
 <script>
 let state={
    raw:'', cursor:0, ans:0, drg:'DEG', shift:false, alpha:false, hyp:false, eng:false, norm: 1,  // 1 = Norm1, 2 = Norm2
+  fix: null,            // FIX: počet desetinných míst (null = vypnuto)
+sci: null,  
   dmsDisplay:false, frac:false, fracMixed:true, fracPrefMixed:true, memory:0, memOn:false,
   lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
   modeStage:0, repeat:null, examActive:false, examCode:'',
@@ -605,6 +636,24 @@ let state={
   lastPercentCtx:null       // { Araw,Braw, op, A, B } uložené po A×B%          // <<< přidáno
 };
 const NORM_KEY = 'bernio.norm.v1';
+  const FIX_KEY = 'bernio.fix.v1';
+const SCI_KEY = 'bernio.sci.v1';
+
+function saveFixSci(){
+  try{
+    localStorage.setItem(FIX_KEY, state.fix == null ? '' : String(state.fix));
+    localStorage.setItem(SCI_KEY, state.sci == null ? '' : String(state.sci));
+  }catch(_){}
+}
+function loadFixSci(){
+  try{
+    const fx = localStorage.getItem(FIX_KEY);
+    const sc = localStorage.getItem(SCI_KEY);
+    state.fix = (fx === '' || fx === null) ? null : Math.max(0, Math.min(9, +fx|0));
+    state.sci = (sc === '' || sc === null) ? null : ( (+sc|0) === 0 ? 10 : Math.max(1, Math.min(10, +sc|0)) );
+  }catch(_){}
+}
+
 
 function saveNorm(){
   try{ localStorage.setItem(NORM_KEY, String(state.norm||1)); }catch(_){}
@@ -1682,6 +1731,17 @@ function toScientificAuto(x){
   }
   return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${e}</sup></span>`;
 }
+  function toScientificSig(x, sig=10){
+  if(!isFinite(x)) return String(x);
+  if(x===0) return '0';
+  const s = Number(sig)||10;            // 1–10 platných číslic
+  const sci = x.toExponential(Math.max(0, s-1));   // např. "1.234e+5"
+  const [mStr, eStr] = sci.split('e');
+  const mant = stripZeros(mStr);
+  const e = parseInt(eStr, 10);
+  return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${e}</sup></span>`;
+}
+
 function toFractionStr(x, mixed=true, maxDen=1e6){
   if(!isFinite(x)) return String(x);
   const sign = x<0 ? -1 : 1;
@@ -1730,6 +1790,16 @@ function formatNumWithOptions(v){
   if(state.dmsDisplay) return degToDMS(x);
   if(state.eng)        return toEngineering(x);
   if(state.frac)       return toFractionStr(x,state.fracMixed);
+  // --- FIX / SCI mají přednost před Norm ---
+// FIX: pevný počet desetinných míst
+if (state.fix != null) {
+  return stripZeros(x.toFixed(Math.max(0, Math.min(9, state.fix|0))));
+}
+// SCI: počet platných číslic (1–9; 0 = 10)
+if (state.sci != null) {
+  return toScientificSig(x, state.sci === 0 ? 10 : state.sci);
+}
+
 
   // ---------- NORM 1 / NORM 2 ----------
   // Pravidla:
@@ -1853,9 +1923,11 @@ updateResultView();
 
 /* init */
 loadNorm();
+loadFixSci();          // <<< přidáno
 render();
 fitToViewport();
 updateExamUI();
+
 
 /* klávesnice */
 addEventListener('keydown',e=>{
@@ -2313,6 +2385,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
