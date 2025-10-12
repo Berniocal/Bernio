@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-52">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-53">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -354,28 +354,30 @@ function renderModeMenu(){
   // ==== NOVÉ MODE stránky ====
   if (state.modeStage === 11) return setMenu(['COMP','SD','REG']);
   if (state.modeStage === 12) return setMenu(['Deg','Rad','Gra']);
-  if (state.modeStage === 13) return setMenu(['Fix','Sci','Norm']);
-  if (state.modeStage === 14) {
-    // Disp + jen "1" uprostřed
-    exprEl.innerHTML =
-      '<div class="modebar">' +
-        '<span class="label"></span>' +
-        '<span class="label">Disp</span>' +
-        '<span class="label"></span>' +
-      '</div>';
-    resEl.classList.add('mode');
-    resEl.innerHTML = '<div class="numrow"><span></span><span>1</span><span></span></div>';
+if (state.modeStage === 13) return setMenu(['Fix','Sci','Norm']);
 
-    const mid = resEl.querySelector('.numrow span:nth-child(2)');
-    if (mid){
-      mid.style.cursor = 'pointer';
-      mid.addEventListener('pointerdown', (ev)=>{
-        ev.preventDefault();
-        handleMenuChoice('1');
-      }, { passive:false });
-    }
-    return true;
+if (state.modeStage === 131) {
+  // Zadávací řádek: "Norm 1~2?" uprostřed; ve výsledkovém řádku nic
+  exprEl.innerHTML =
+    '<div class="modebar">' +
+      '<span class="label"></span>' +
+      '<span class="label">Norm 1~2?</span>' +
+      '<span class="label"></span>' +
+    '</div>';
+  resEl.classList.add('mode');
+  resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span></span></div>';
+  const row = resEl.querySelector('.numrow');
+  if (row){
+    // 1 a 2 jsou klikací
+    [0,1].forEach(i=>{
+      const el = row.children[i];
+      el.style.cursor='pointer';
+      el.addEventListener('pointerdown',(ev)=>{ ev.preventDefault(); handleMenuChoice(String(i+1)); },{passive:false});
+    });
   }
+  return true;
+}
+
 
   // ==== PŮVODNÍ stránky (ponecháváme kvůli mini-promptu DRG>) ====
   if (state.modeStage === 1)  return setMenu(['Deg','Rad','Gra']);
@@ -404,11 +406,26 @@ function handleMenuChoice(digit){
     render();
     return true;
   }
-  if (state.modeStage === 13){
-    // Fix / Sci / Norm – zatím nefunkční → jen zavřít menu
-    state.modeStage = 0; render();
-    return true;
+if (state.modeStage === 13){
+  // 1=Fix, 2=Sci (zatím ne), 3=Norm → otevři "Norm 1~2?"
+  if (digit === '3'){
+    state.modeStage = 131; // zobraz prompt Norm 1~2?
+    render();
+  } else {
+    state.modeStage = 0;   // Fix/Sci teď neřešíme
+    render();
   }
+  return true;
+}
+if (state.modeStage === 131){
+  if (digit === '1') state.norm = 1;
+  else if (digit === '2') state.norm = 2;
+  // nic nevypisujeme na displej – jen zavřít menu
+  state.modeStage = 0;
+  render();
+  return true;
+}
+
   if (state.modeStage === 14){
     // Disp / 1 – zatím nefunkční → jen zavřít menu
     state.modeStage = 0; render();
@@ -579,7 +596,7 @@ const Exam = (() => {
 
 <script>
 let state={
-   raw:'', cursor:0, ans:0, drg:'DEG', shift:false, alpha:false, hyp:false, eng:false,
+   raw:'', cursor:0, ans:0, drg:'DEG', shift:false, alpha:false, hyp:false, eng:false, norm: 1,  // 1 = Norm1, 2 = Norm2
   dmsDisplay:false, frac:false, fracMixed:true, fracPrefMixed:true, memory:0, memOn:false,
   lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
   modeStage:0, repeat:null, examActive:false, examCode:'',
@@ -1695,26 +1712,48 @@ function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/6
 
 function formatNumWithOptions(v){
   if(!isFinite(v)) return String(v);
-  const x = roundSig(v,12);
 
+  // DMS / ENG / FRAC mají přednost – to ponecháváme beze změny
+  const x = roundSig(v,12);
   if(state.dmsDisplay) return degToDMS(x);
   if(state.eng)        return toEngineering(x);
   if(state.frac)       return toFractionStr(x,state.fracMixed);
 
+  // ---------- NORM 1 / NORM 2 ----------
+  // Pravidla:
+  // - Celá čísla s >10 ciframi → vědecky.
+  // - Desetinná čísla: Norm1 povolí max 2 desetinná místa, Norm2 max 9.
+  //   Pokud je třeba více míst → vědecky.
   const ax = Math.abs(x);
-  // Malé/velké hodnoty: vždy hezká vědecká notace
-  if(ax !== 0 && (ax >= 1e8 || ax < 1e-8)){
+
+  // Pomocník: kolik má číslo desetinných míst, když ho rozumně "rozepíšeme"
+  const decimalsNeeded = (val) => {
+    // 12 míst stačí pro UI; uřízneme a očistíme nuly
+    const s = stripZeros(val.toFixed(12));
+    const p = s.indexOf('.');
+    return p === -1 ? 0 : (s.length - p - 1);
+  };
+
+  // 1) Integery: počet číslic
+  if (Number.isInteger(x)) {
+    const digits = ax === 0 ? 1 : (Math.floor(Math.log10(ax)) + 1);
+    if (digits > 10) return toScientificAuto(x);
+    // jinak ukážeme běžně (bez e)
+    return stripZeros(x.toString());
+  }
+
+  // 2) Desetinná čísla: limity dle normy
+  const limit = (state.norm === 2) ? 9 : 2;
+  const decs = decimalsNeeded(x);
+  if (decs > limit) {
     return toScientificAuto(x);
   }
 
-  // Jinak použijeme toPrecision – ale pokud by vrátilo e-zápis,
-  // vynutíme naši vědeckou notaci s ×10^
-  const s = stripZeros(x.toPrecision(12));
-  if (/[eE]/.test(s)) {
-    return toScientificAuto(x);
-  }
-  return s;
+  // 3) Nechceme zbytečné e-zápisy: ukaž běžný zápis s rozumným počtem míst
+  //    (zarovnáme na skutečný počet potřebných desetinných míst)
+  return stripZeros(x.toFixed(Math.min(decs, 12)));
 }
+
 
 function updateResultView(){
   if(!state.lastRes){ state.resultStr=''; state.resultShown=false; render(); return; }
@@ -2261,6 +2300,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
