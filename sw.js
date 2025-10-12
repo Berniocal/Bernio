@@ -1,5 +1,5 @@
-const CACHE_STATIC  = 'calc-static-v8';
-const CACHE_RUNTIME = 'calc-runtime-v8';
+const CACHE_STATIC  = 'calc-static-v9';
+const CACHE_RUNTIME = 'calc-runtime-v9';
 
 const PRECACHE = [
   '/',
@@ -63,5 +63,6 @@ self.addEventListener('fetch', (event) => {
   if (pathname.startsWith('/zpjevnicek/')) return; // nic nedělej
   // ... zbytek SW logiky Bernio ...
 });
+
 
 
