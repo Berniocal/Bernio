@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-67">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-68">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2043,11 +2043,21 @@ if (state.eng)        return toEngineering(x);
     return p === -1 ? 0 : (s.length - p - 1);
   };
 
-  const limit = (state.norm === 2) ? 9 : 2;
-  const decs  = decimalsNeeded(x);
-  if (decs > limit) return toScientificAuto(x);
+const limit = (state.norm === 2) ? 9 : 2;
+const decs  = decimalsNeeded(x);
 
-  return applyDecSepToStr(stripZeros(x.toFixed(Math.min(decs, 12))));
+// Pro „normální“ velikosti (ne extrémně malé/velké) nechoď do SCI,
+// jen zaokrouhli na limit míst — to řeší periodická čísla typu 1/3.
+if (Math.abs(x) >= 1e-9 && Math.abs(x) < 1e10) {
+  return applyDecSepToStr(stripZeros(x.toFixed(Math.min(limit, 12))));
+}
+
+// Mimo tenhle rozsah povol vědecký tvar (hodí se pro velmi malá/velká čísla).
+if (decs > limit) return toScientificAuto(x);
+
+// Jinak drž přesně tolik míst, kolik je třeba (do 12)
+return applyDecSepToStr(stripZeros(x.toFixed(Math.min(decs, 12))));
+
 }
 
 
@@ -2617,6 +2627,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
