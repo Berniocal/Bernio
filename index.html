@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-74">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-75">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>  
@@ -152,7 +152,8 @@ body.exam-on .calc{
   .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);}   
   .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);}   
   
-  .oval{background:var(--oval);color:#263445;border-radius:18px;padding:.6em .2em;text-align:center;font-weight:700;box-shadow:var(--shadow);touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}  
+.oval{position:relative;background:var(--oval);color:#263445;border-radius:18px;padding:.6em .2em;text-align:center;font-weight:700;box-shadow:var(--shadow);touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
+ 
   #btnSHIFT{color:#b08c00} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}  
   .replay{background:#bfcbd9;color:#3b4b5c;border-radius:999px;font-size:20px}  
   .span2{grid-row:span 2}  
@@ -161,13 +162,30 @@ body.exam-on .calc{
   .key:active{transform:translateY(1px)}  
   .num{background:var(--num);color:var(--num-text)} .fn{background:var(--fn);color:var(--fn-text)}  
   .pink{background:var(--pink);color:#3b1c26} .pink.soft{background:var(--pink2)}  
-  .legend{position:absolute;top:6px;left:8px;font-size:.72em;color:#b08c00;opacity:.9;pointer-events:none}  
+.legend{
+  position:absolute;
+  top:6px; left:8px;
+  font-size:.72em;           /* globálně beze změny */
+  color:#b08c00; opacity:.9;
+  pointer-events:none;
+}
+.legend.small{
+  top:3px; left:6px;         /* lehčí odsazení */
+  font-size:.58em;           /* zmenšení jen tady */
+  line-height:1;
+  white-space:nowrap;        /* nezalamovat S-SUM / S-VAR */
+  letter-spacing:.02em;
+}
+
+ 
   /* ALPHA label vpravo nahoře na tlačítkách */  
-.legend.alpha{  
-  left:auto;  
-  right:8px;  
-  color: var(--alpha);  
-}  
+.legend.alpha{
+  left:auto;
+  right:8px;
+  color: var(--alpha);
+}
+
+ 
   .main{display:block}  
   .botgrid .key{padding:.85em .25em .6em;font-size:clamp(22px,7.2vw,34px)}  
   .root{position:relative;display:inline-block;padding-left:.05em}  
@@ -196,6 +214,7 @@ body.exam-on .calc{
         <span class="badge auto" id="bFIX">FIX</span>
         <span class="badge auto" id="bSCI">SCI</span>
         <span class="badge auto" id="bMem">M</span>
+        <span class="badge auto" id="bSTO">STO</span>
         <span class="badge auto" id="bExamTimer"></span>
         <span class="badge auto" id="bExamCode" style="margin-left:auto"></span>
       </div>
@@ -210,7 +229,8 @@ body.exam-on .calc{
 <button class="oval" id="btnALPHA">ALPHA</button>
 <button class="oval replay span2" id="btnLeft">◀</button>
 <button class="oval replay span2" id="btnRight">▶</button>
-<button class="oval" id="btnMODE"><span class="main">MODE</span></button>
+<button class="oval" id="btnMODE"><span class="legend">CLR</span><span class="main">MODE</span></button>
+
 <button class="oval" id="btnQR">QR</button>
 
 
@@ -238,7 +258,8 @@ body.exam-on .calc{
       <button class="key fn" data-ins="(" id="btnParL"><span class="main">(</span></button>
       <button class="key fn" data-ins=")" id="btnParR"><span class="legend alpha">X</span><span class="main">)</span></button>
       <button class="key fn" data-ins="," id="btnComma"><span class="legend alpha">Y</span><span class="main">,</span></button>
-     <button class="key fn" id="btnMpm"><span class="legend">M−</span><span class="legend alpha">M</span><span class="main">M+</span></button>
+     <button class="key fn" id="btnMpm"><span class="legend">CL</span><span class="legend alpha">M</span><span class="main">M+</span></button>
+
     </div>
 
     <!-- DOLNÍ 5×4 -->
@@ -246,7 +267,7 @@ body.exam-on .calc{
       <button class="key num" data-ins="7"><span class="main">7</span></button>
       <button class="key num" data-ins="8"><span class="main">8</span></button>
       <button class="key num" data-ins="9"><span class="main">9</span></button>
-      <button class="key pink" data-act="del"><span class="legend">INS</span><span class="main">DEL</span></button>
+      <button class="key pink" data-act="del"><span class="legend small">INS</span><span class="main">DEL</span></button>
       <button class="key pink" data-act="ac"><span class="main">AC</span></button>
 
       <button class="key num" data-ins="4"><span class="main">4</span></button>
@@ -255,17 +276,21 @@ body.exam-on .calc{
       <button class="key num" data-ins="×"><span class="main">×</span></button>
       <button class="key num" data-ins="÷"><span class="main">÷</span></button>
 
-      <button class="key num" data-ins="1"><span class="main">1</span></button>
-      <button class="key num" data-ins="2"><span class="main">2</span></button>
+<button class="key num" data-ins="1"><span class="legend small">S-SUM</span><span class="main">1</span></button>
+
+
+<button class="key num" data-ins="2"><span class="legend small">S-VAR</span><span class="main">2</span></button>
+
+
       <button class="key num" data-ins="3"><span class="main">3</span></button>
       <button class="key num" data-ins="+"><span class="main">+</span></button>
       <button class="key num" data-ins="−"><span class="main">−</span></button>
 
       <button class="key num" id="btn0"><span class="legend">Rnd</span><span class="main">0</span></button>
       <button class="key num" id="btnDot"><span class="legend">Ran#</span><span class="main">.</span></button>
-      <button class="key num" id="btnEXP"><span class="legend">π</span><span class="main">EXP</span></button>
-      <button class="key num" id="btnAns"><span class="legend">DRG▶</span><span class="main">Ans</span></button>
-      <button class="key num" id="btnEq"><span class="legend">%</span><span class="main">=</span></button>
+      <button class="key num" id="btnEXP"><span class="legend small">π</span><span class="main">EXP</span></button>
+      <button class="key num" id="btnAns"><span class="legend small">DRG▶</span><span class="main">Ans</span></button>
+      <button class="key num" id="btnEq"><span class="legend small">%</span><span class="main">=</span></button>
     </div>
   </div>
 </div>
@@ -323,8 +348,10 @@ window.addEventListener('orientationchange', fitToViewport);
 /* ===== stav ===== */
 const exprEl=qs('#expr'), resEl=qs('#res');
 const bShift=qs('#bShift'), bAlpha=qs('#bAlpha'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem'),
-      bFIX=qs('#bFIX'), bSCI=qs('#bSCI');
+      bFIX=qs('#bFIX'), bSCI=qs('#bSCI'), bSTO=qs('#bSTO');
 const calcEl = document.getElementById('calc');
+// marker pro superscript pouze z dedikovaných kláves (Word Joiner)
+const SUPMARK = '\u2060';
 const TEACHER_URL = "https://berniocal.github.io/Bernio/teacher.html"; // jediný zdroj pravdy
 const API_BASE = "https://examqr.jendabernard.workers.dev";
 function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
@@ -771,20 +798,41 @@ const Exam = (() => {
 
 <script>
 let state={
-   raw:'', cursor:0, ans:0, drg:'DEG', shift:false, alpha:false, hyp:false, eng:false, norm: 2,  // 1 = Norm1, 2 = Norm2
-  fix: null,            // FIX: počet desetinných míst (null = vypnuto)
-sci: null,  
+  raw:'', cursor:0, ans:0, drg:'DEG', shift:false, alpha:false, hyp:false, eng:false, norm:2,
+  fix:null, sci:null,
   dmsDisplay:false, frac:false, fracMixed:true, fracPrefMixed:true, memory:0, memOn:false,
   lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
   modeStage:0, repeat:null, examActive:false, examCode:'',
   percentSuffix:'',
-  lastPercentCtx:null,       // { Araw,Braw, op, A, B } uložené po A×B%          // <<< přidáno
-  /* === NOVÉ: oddělovač desetinných míst === */
-  decSep: '.'              // '.' nebo ','
+  lastPercentCtx:null,
+  /* === NOVÉ: oddělovač === */
+  decSep: '.',
+  /* === NOVÉ: paměťové proměnné + čekání na STO/RCL === */
+  memVars:{A:null,B:null,C:null,D:null,E:null,F:null,X:null,Y:null,M:null},
+  waitingSTO:false,
+  waitingRCL:false
 };
+
+// Při aktivním ALPHA nebo čekání na STO/RCL zachytíme písmena z červených popisek
+function wantsAlphaCapture(){
+  return state.alpha || state.waitingSTO || state.waitingRCL;
+}
+
 const NORM_KEY = 'bernio.norm.v1';
 const FIX_KEY = 'bernio.fix.v1';
 const SCI_KEY = 'bernio.sci.v1';
+const VARS_KEY = 'bernio.vars.v1';
+
+function saveVars(){
+  try{ localStorage.setItem(VARS_KEY, JSON.stringify(state.memVars)); }catch(_){}
+}
+function loadVars(){
+  try{
+    const v = JSON.parse(localStorage.getItem(VARS_KEY)||'{}');
+    Object.assign(state.memVars, {A:null,B:null,C:null,D:null,E:null,F:null,X:null,Y:null,M:null}, v||{});
+  }catch(_){}
+}
+
 /* === NOVÉ klíče pro perzistenci === */
 const FRAC_PREF_KEY = 'bernio.fracpref.v1';
 const DECSEP_KEY    = 'bernio.decsep.v1';
@@ -845,19 +893,46 @@ function prettySegments(raw){
   while(i<raw.length){
     if(raw.startsWith('pow10(',i)){ push('10^(',6); i+=6; continue; }
     if(raw.startsWith('exp(',i)){   push('e^(',4);   i+=4; continue; }
-    if(raw.startsWith('asin(',i)){  push('sin<sup>−1</sup>(',5); i+=5; continue; }
-    if(raw.startsWith('acos(',i)){  push('cos<sup>−1</sup>(',5); i+=5; continue; }
-    if(raw.startsWith('atan(',i)){  push('tan<sup>−1</sup>(',5); i+=5; continue; }
+    i// asin / acos / atan → sin⁻¹ / cos⁻¹ / tan⁻¹ (nezávisle na tom, co je za nimi)
+const isWordBoundary = ch => !/[A-Za-z0-9_]/.test(ch || '');
+if (raw.slice(i, i+4) === 'asin' && isWordBoundary(raw[i+4])) {
+  push('sin<sup>−1</sup>', 4); i += 4; continue;
+}
+if (raw.slice(i, i+4) === 'acos' && isWordBoundary(raw[i+4])) {
+  push('cos<sup>−1</sup>', 4); i += 4; continue;
+}
+if (raw.slice(i, i+4) === 'atan' && isWordBoundary(raw[i+4])) {
+  push('tan<sup>−1</sup>', 4); i += 4; continue;
+}
+
     if(raw.startsWith('sqrt(',i)){  push('√(',5); i+=5; continue; }
     if(raw.startsWith('cbrt(',i)){  push('∛(',5); i+=5; continue; }
     if(raw.startsWith('root(',i)){
       let j=i+5,y=''; while(j<raw.length&&/[0-9.]/.test(raw[j])) y+=raw[j++];
       if(raw[j]===','){ push(y+'√(', j-i+1); i=j+1; continue; }
     }
-    if(raw[i]==='^' && raw[i+1]==='('){
-      let j=i+2; while(j<raw.length && raw[j]!==')') j++;
-      if(j<raw.length){ const expo=raw.slice(i+2,j).replace(/-/g,'−'); push('<sup>'+expo+'</sup>', j-i+1); i=j+1; continue; }
-    }
+// superscript POUZE pokud je před '^' náš marker (vkládají x⁻¹/x²/x³)
+if (raw[i] === SUPMARK && raw[i+1] === '^' && raw[i+2] === '(') {
+  let j = i + 3, depth = 1;
+  while (j < raw.length && depth > 0) {
+    if (raw[j] === '(') depth++;
+    else if (raw[j] === ')') depth--;
+    j++;
+  }
+  if (depth === 0) {
+    const expo = raw.slice(i + 3, j - 1).replace(/-/g, '−');
+    push('<sup>' + expo + '</sup>', j - i); // spotřebuje i SUPMARK
+    i = j;
+    continue;
+  }
+}
+// ruční ^(…) NIKDY nekrášli – nech prosté '^'
+if (raw[i] === '^' && raw[i+1] === '(') {
+  push('^', 1);
+  i += 1;
+  continue;
+}
+
     const ch=raw[i]; 
    const pretty = ch==='*' ? '×'
   : ch==='/' ? '÷'
@@ -886,8 +961,14 @@ function render(){
   bENG.classList.toggle('on',state.eng);
   bDMS.classList.toggle('on',state.dmsDisplay);
   bMem.classList.toggle('on',state.memOn);
-      if (bFIX) bFIX.classList.toggle('on', state.fix != null);
+  if (bFIX) bFIX.classList.toggle('on', state.fix != null);
   if (bSCI) bSCI.classList.toggle('on', state.sci != null);
+  if (bSTO) {
+  const on = state.waitingSTO || state.waitingRCL;
+  bSTO.classList.toggle('on', on);
+  bSTO.textContent = state.waitingRCL ? 'RCL' : 'STO';
+}
+
 
   bDRG.textContent=state.drg;
   calcEl.classList.toggle('shift-on', state.shift);
@@ -1325,7 +1406,7 @@ onPD(qs('#btnInv'), ()=>{
       state.cursor = state.raw.length;
       render();
     } else {
-      state.raw = 'Ans^(-1)';          // převrácená hodnota Ans
+      state.raw = 'Ans' + SUPMARK + '^(-1)';   // horní index jen z kláves
       state.cursor = state.raw.length;
       render();
     }
@@ -1338,7 +1419,8 @@ onPD(qs('#btnInv'), ()=>{
     if(state.cursor>0 && /[0-9\)]/.test(state.raw[state.cursor-1])) insRaw('!');
     else insRaw('fact(');
   } else {
-    insRaw('^(-1)');
+   insRaw(SUPMARK + '^(-1)');
+
   }
 });
 
@@ -1356,14 +1438,15 @@ onPD(qs('#btnPow3'),()=>{
       state.cursor = state.raw.length;
       render();
     } else {
-      state.raw = 'Ans^(3)';          // Ans^3
+      state.raw = 'Ans' + SUPMARK + '^(3)';    // Ans^(3) se superscriptem
       state.cursor = state.raw.length;
       render();
     }
     return;
   }
   clearForNewEntry();
-  if(state.shift){ state.shift=false; insRaw('cbrt(');} else insRaw('^(3)');
+  if(state.shift){ state.shift=false; insRaw('cbrt(');} else insRaw(SUPMARK + '^(3)');
+
 });
 
 onPD(qs('#btnFracKey'), ()=>{
@@ -1412,13 +1495,13 @@ onPD(qs('#btnSqrt'),()=>{ clearForNewEntry(); insRaw('sqrt('); });
 onPD(qs('#btnPow2'),()=>{
   if(state.resultShown && !state.editAfterResult){
     state.editAfterResult = true;
-    state.raw = 'Ans^(2)';            // Ans^2
+    state.raw = 'Ans' + SUPMARK + '^(2)';
     state.cursor = state.raw.length;
     render();
     return;
   }
   clearForNewEntry();
-  insRaw('^(2)');
+ insRaw(SUPMARK + '^(2)');
 });
 
 
@@ -1431,10 +1514,19 @@ onPD(qs('#btnPow'), ()=>{
     else  insRaw('root(');
   }else{ opAfterResult('^'); }
 });
-onPD(qs('#btnHYP'), ()=>{ state.hyp=!state.hyp; if(state.resultShown) updateResultView(); render(); });
-onPD(qs('#btnNeg'), ()=> insRaw('−'));
+onPD(qs('#btnHYP'), ()=>{
+  if (wantsAlphaCapture()){ handleAlphaVar('C'); return; }
+  state.hyp=!state.hyp; if(state.resultShown) updateResultView(); render();
+});
+
+onPD(qs('#btnNeg'), ()=>{
+  if (wantsAlphaCapture()){ handleAlphaVar('A'); return; }
+  insRaw('−');
+});
+
 
 onPD(qs('#btnDMSsym'),()=>{
+  if (wantsAlphaCapture()){ handleAlphaVar('B'); return; }
   // Pokud je zobrazen výsledek a nezačali jsme editovat, přepínej DMS <-> desetinný
   if(state.resultShown && !state.editAfterResult){
     state.dmsDisplay = !state.dmsDisplay;
@@ -1480,21 +1572,52 @@ onPD(qs('#btnDMSsym'),()=>{
 });
 
 
-onPD(qs('#btnRCLSTO'),()=>{ if(state.shift){ state.shift=false; state.memory= +state.ans || 0; state.memOn=state.memory!==0; render(); } else insRaw(String(state.memory)); });
+onPD(qs('#btnRCLSTO'), ()=>{
+  // SHIFT + RCL = STO (čekám na A..F/X/Y/M)
+  if (state.shift){
+    state.shift=false;           // zhasne SHIFT
+    state.waitingSTO = true;     // rozsvítí se STO
+    state.waitingRCL = false;
+    render();                    // nic jiného nezobrazuj
+    return;
+  }
+  // RCL = načti proměnnou – taky jen čekám na volbu
+  state.waitingRCL = true;
+  state.waitingSTO = false;
+  render();
+});
+
+
 onPD(qs('#btnENG'),()=>{ state.eng=!state.eng; if(state.resultShown) updateResultView(); render(); });
-onPD(qs('#btnMpm'),()=>{ if(state.shift){ state.shift=false; state.memory -= (+state.ans||0); } else { state.memory += (+state.ans||0); } state.memOn=state.memory!==0; render(); });
+onPD(qs('#btnMpm'),()=>{
+  if (wantsAlphaCapture()){ handleAlphaVar('M'); return; }
+  if(state.shift){ state.shift=false; state.memory -= (+state.ans||0); }
+  else { state.memory += (+state.ans||0); }
+  state.memOn = state.memory!==0;
+  render();
+});
+
 
 onPDAll('[data-fn]', el=>{ clearForNewEntry(); const f=el.dataset.fn; if(f==='log'){ if(state.shift){ state.shift=false; insRaw('pow10('); } else insRaw('log('); } if(f==='ln'){ if(state.shift){ state.shift=false; insRaw('exp('); } else insRaw('ln('); }});
 
 onPDAll('[data-trig]', el=>{
+  const base = el.dataset.trig;
+  if (wantsAlphaCapture()){
+    const L = base==='sin'?'D': base==='cos'?'E':'F';
+    handleAlphaVar(L);
+    return;
+  }
   clearForNewEntry();
-  const base=el.dataset.trig; let raw='';
-  if(state.shift && !state.hyp){ raw='a'+base+'('; }
-  else if(state.shift && state.hyp){ raw='a'+base+'h('; }
-  else if(state.hyp){ raw=base+'h('; }
-  else{ raw=base+'('; }
-  state.shift=false; insRaw(raw);
+  let raw='';
+  if (state.shift && !state.hyp){ raw = 'a' + base + ' '; }     // asin␠
+  else if (state.shift && state.hyp){ raw = 'a' + base + 'h '; } // asinh␠
+  else if (state.hyp){ raw = base + 'h '; }                      // sinh␠
+  else { raw = base + ' '; }                                     // sin␠
+  state.shift = false;
+  insRaw(raw);
 });
+
+
 
 onPD(qs('#btn0'),  ()=>{ if(state.shift){ state.shift=false; insRaw('Rnd(');} else insRaw('0'); });
 onPD(qs('#btnDot'),()=>{
@@ -1556,11 +1679,74 @@ function splitLastSimpleAB(raw){
 function quickEvalToNumber(expr){
   try{
     const norm = normalizeInput(expr);
-    const toks  = tokenize(norm);
-    const rpn   = toRPN(toks);
+let toks = tokenize(norm);
+toks = substituteVars(toks);
+const rpn = toRPN(toks);
     const r     = evalRPN(rpn);
     return (typeof r === 'number') ? +r : (r && r.t==='pair' ? NaN : +r);
   }catch(_){ return NaN; }
+}
+
+function handleAlphaVar(L){
+  // Pokud čekáme na STO: ulož aktuální výraz do proměnné L
+  if (state.waitingSTO){
+    state.waitingSTO = false;
+    state.waitingRCL = false;
+    state.alpha = false;
+
+    // vyhodnoť aktuální výraz na číslo (NaN při chybě)
+    const val = quickEvalToNumber(state.raw);
+
+    if (!isFinite(val)) {
+      // chyba → ukaž Error a nic neukládej
+      state.resultShown = true;
+      state.resultStr = 'Error';
+      render();
+      return;
+    }
+
+    // ulož a perzistuj
+    state.memVars[L] = +val;
+    saveVars();
+
+    // zobraz "vstup → L" a číslo ve výsledku
+    state.lastRes = { type: 'num', v: +val };
+    state.resultShown = true;
+    state.percentSuffix = '';
+    state.raw = (state.raw || '') + '→' + L;   // jen pro zobrazení
+    state.cursor = state.raw.length;
+    updateResultView();                         // vyrenderuje 11 podle formátu
+    return;
+  }
+
+  // Pokud čekáme na RCL: ukaž "L=" a hodnotu z paměti
+  if (state.waitingRCL){
+    state.waitingRCL = false;
+    state.waitingSTO = false;
+    state.alpha = false;
+
+    const v = state.memVars[L];
+    if (v == null || !isFinite(+v)){
+      state.resultShown = true;
+      state.resultStr = 'Error';
+      state.raw = L + '=';
+      state.cursor = state.raw.length;
+      render();
+      return;
+    }
+    state.lastRes = { type:'num', v:+v };
+    state.resultShown = true;
+    state.percentSuffix = '';
+    state.raw = L + '=';
+    state.cursor = state.raw.length;
+    updateResultView();
+    return;
+  }
+
+  // běžné ALPHA: vlož písmeno do výrazu (použití ve vzorci)
+  state.alpha = false;
+  clearForNewEntry();
+  insRaw(L);
 }
 
 // po vložení '%' zkus hned vypočítat A×/÷B% a uložit kontext
@@ -1637,15 +1823,45 @@ function opAfterResult(sym){
     insRaw(sym);
   }
 }
-
-onPDAll('[data-ins]', el=>{
-  const t=el.dataset.ins;
-  if(state.modeStage>0 && /^[0-9]$/.test(t)){ handleMenuChoice(t); return; }
-
-  if(t==='+'||t==='−'||t==='×'||t==='÷'){ opAfterResult(t); }
-  else if(t==='('||t===')'||t===','||/^[0-9.]$/.test(t)){ insRaw(t); }
-  else { insRaw(t); }
+onPD(qs('#btnParR'), ()=>{
+  if (wantsAlphaCapture()){ handleAlphaVar('X'); return; }
+  insRaw(')');
 });
+onPD(qs('#btnComma'), ()=>{
+  if (wantsAlphaCapture()){ handleAlphaVar('Y'); return; }
+  insRaw(',');
+});
+
+// Obecné vkládání znaků z kláves s data-ins,
+// ale IGNORUJ tlačítka, která mají vlastní handler ( ) a ,  kvůli X/Y.
+onPDAll('[data-ins]', el=>{
+  // vynech dedikované klávesy – mají vlastní onPD
+  if (el.id === 'btnParR' || el.id === 'btnComma') return;
+
+  const t = el.dataset.ins;
+
+  // režim MODE – čísla jdou do menu
+  if (state.modeStage > 0 && /^[0-9]$/.test(t)) {
+    handleMenuChoice(t);
+    return;
+  }
+
+  // běžné operátory
+  if (t === '+' || t === '−' || t === '×' || t === '÷') {
+    opAfterResult(t);
+    return;
+  }
+
+  // závorky, čárka, číslice a tečka
+  if (t === '(' || t === ')' || t === ',' || /^[0-9.]$/.test(t)) {
+    insRaw(t);
+    return;
+  }
+
+  // fallback
+  insRaw(t);
+});
+
 function prettyOp(op){ return op==='+'?'+': op==='-'?'−': op==='*'?'×': op==='/'?'÷': op; }
 
 function captureRepeat(tokens){
@@ -1658,51 +1874,74 @@ function captureRepeat(tokens){
 }
 /* ===== parser ===== */
 function normalizeInput(s){
-  s=s.replace(/\s+/g,'').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
-  s = s.replace(/RAN#(?!\s*\()/g, 'RAN#()'); // RAN# → RAN#() pokud nemá ( )
-  s=autoCloseUnary(s);
-  s=autoCloseRoot(s);
+// nejdřív jen přepisy znaků (mezery zatím NEcháme)
+s = s.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+s = s.replace(/\u2060/g, '');
+s = s.replace(/RAN#(?!\s*\()/g, 'RAN#()'); // RAN# → RAN#() pokud nemá ( )
 
-  const sep    = '[ʟ]';// pouze náš symbol, žádné "L" apod.
-const mixRe  = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
-const fracRe = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
+// --- tady: nejdřív chyť "sin 60" → sin(60) (mezery nám pomůžou)
+s = applyImplicitTrig(s);
+
+// teprve teď mezery pryč
+s = s.replace(/\s+/g,'');
+
+// a pak auto-dovírání NETRIG unárních funkcí
+s = autoCloseUnary(s);
+
+
+  // 3) root(y,x) auto-dovření
+  s = autoCloseRoot(s);
+
+  // --- zlomky a smíšená čísla ---
+  const sep    = '[ʟ]';
+  const mixRe  = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
+  const fracRe = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
 
   let prev;
   do {
     prev = s;
-    s = s.replace(mixRe,  (_m, pre, a, b, c) => `${pre}(${a}+(${b})/(${c}))`);
+    s = s.replace(mixRe, (_m, pre, a, b, c) => `${pre}(${a}+(${b})/(${c}))`);
   } while (prev !== s);
 
   s = s.replace(fracRe, (_m, pre, n, d) => `${pre}((${n})/(${d}))`);
   s = s.replace(/\s+/g,'');
 
-  s=s.replace(/sin\^\(-1\)\(/g,'asin(').replace(/cos\^\(-1\)\(/g,'acos(').replace(/tan\^\(-1\)\(/g,'atan(');
-  s=s.replace(/Ans/g,String(state.ans)).replace(/π/g,String(Math.PI));
-  // plné DMS: d ° m ′ s ″
-s = s.replace(
-  /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′\s*(\d+(?:\.\d+)?)″/g,
-  (_, d, m, sec) => String(dmsToDeg(parseFloat(d), parseFloat(m), parseFloat(sec)))
-);
-// jen stupně + minuty: doplň sekundy = 0
-s = s.replace(
-  /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′/g,
-  (_, d, m) => String(dmsToDeg(parseFloat(d), parseFloat(m), 0))
-);
-// jen stupně: doplň minuty = 0, sekundy = 0
-// (není-li bezprostředně po ° další DMS symbol nebo číslo minut)
-s = s.replace(
-  /(-?\d+(?:\.\d+)?)°(?!\s*[\d′″])/g,
-  (_, d) => String(dmsToDeg(parseFloat(d), 0, 0))
-);
+  // inverzní trig jen pokud UŽ jsou závorky (uživatel je napsal sám)
+  s = s.replace(/sin\^\(-1\)\(/g,'asin(')
+       .replace(/cos\^\(-1\)\(/g,'acos(')
+       .replace(/tan\^\(-1\)\(/g,'atan(');
 
-  s=s.replace(/(-?\d+(?:\.\d+)?)C(-?\d+(?:\.\d+)?)/g,'nCr($1,$2)');
-  s=s.replace(/(-?\d+(?:\.\d+)?)P(-?\d+(?:\.\d+)?)/g,'nPr($1,$2)');
+  // Ans, π
+  s = s.replace(/Ans/g, String(state.ans))
+       .replace(/π/g,   String(Math.PI));
+
+  // DMS převody
+  s = s.replace(
+    /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′\s*(\d+(?:\.\d+)?)″/g,
+    (_, d, m, sec) => String(dmsToDeg(parseFloat(d), parseFloat(m), parseFloat(sec)))
+  );
+  s = s.replace(
+    /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′/g,
+    (_, d, m) => String(dmsToDeg(parseFloat(d), parseFloat(m), 0))
+  );
+  s = s.replace(
+    /(-?\d+(?:\.\d+)?)°(?!\s*[\d′″])/g,
+    (_, d) => String(dmsToDeg(parseFloat(d), 0, 0))
+  );
+
+  // nCr / nPr
+  s = s.replace(/(-?\d+(?:\.\d+)?)C(-?\d+(?:\.\d+)?)/g,'nCr($1,$2)');
+  s = s.replace(/(-?\d+(?:\.\d+)?)P(-?\d+(?:\.\d+)?)/g,'nPr($1,$2)');
+
   return s;
 }
 
+
 function autoCloseUnary(s){
-  const unary=['sin','cos','tan','asin','acos','atan','sinh','cosh','tanh','asinh','acosh','atanh',
-               'sqrt','cbrt','log','ln','exp','pow10','abs','ceil','floor','inv','Rnd'];
+  const unary=[
+    // !!! bez trig funkcí !!!
+    'sqrt','cbrt','log','ln','exp','pow10','abs','ceil','floor','inv','Rnd'
+  ];
   let out='', i=0;
 
   while(i<s.length){
@@ -1739,6 +1978,82 @@ function autoCloseUnary(s){
     else if(s[k]===')'){ out += s.slice(i,k+1); i=k+1; }
     else if('+-*/^,'.includes(s[k])){ out += s.slice(i,k)+')'+s[k]; i=k+1; }
     else { out += s[i]; i++; }
+  }
+  return out;
+}
+// === IMPLICITNÍ ARGUMENT PRO GONIOMETRII ===
+// Pokud je "sin", "asin", "tanh", … a NE následuje "(",
+// obalíme nejbližší atom (číslo/π/Ans/promenna) do závorek:  sin60 -> sin(60)
+function applyImplicitTrig(s){
+  const names = [
+    'sin','cos','tan','asin','acos','atan',
+    'sinh','cosh','tanh','asinh','acosh','atanh'
+  ];
+  // vytvoř regex jako (sin|cos|...)(?!\s*\()
+   const re = new RegExp(`\\b(?:${names.join('|')})\\b(?=\\s*[^\\s(])`, 'g');
+
+  // projdeme řetězec a vždy po nalezení jména funkce obalíme následující "atom"
+  let out = '';
+  let i = 0;
+  while (i < s.length){
+    re.lastIndex = i;
+    const m = re.exec(s);
+    if (!m){
+      out += s.slice(i);
+      break;
+    }
+    // přepiš vše před názvem funkce a samotný název
+    out += s.slice(i, m.index) + m[0];
+    let j = re.lastIndex;
+
+    // pokud je hned "(" -> necháme být (uživatelské závorky)
+    let k = j;
+    while (k < s.length && /\s/.test(s[k])) k++;
+    if (s[k] === '('){
+      // nic nevkládej, pokračuj dál
+      i = j;
+      continue;
+    }
+
+    // Jinak se pokusíme sebrat JEDEN "atom"
+    // 1) volitelně +/-
+    if (k < s.length && (s[k] === '+' || s[k] === '-' )) k++;
+
+    // 2) číslo (0..9 a tečka)
+    let startAtom = k;
+    while (k < s.length && /[0-9.]/.test(s[k])) k++;
+
+    // 2a) exponent E±n
+    if ((s[k] === 'E' || s[k] === 'e') && /[-+0-9]/.test(s[k+1])){
+      k++;
+      if (s[k] === '+' || s[k] === '-') k++;
+      while (k < s.length && /[0-9]/.test(s[k])) k++;
+    }
+
+    // 2b) případné DMS symboly ° ′ ″
+    while (k < s.length && (s[k] === '°' || s[k] === '′' || s[k] === '″')) k++;
+
+    // 3) speciály: π, Ans, nebo proměnná A-F/X/Y/M (když to není číslo)
+    if (startAtom === k){
+      const tail = s.slice(k);
+      if (tail.startsWith('Ans')){
+        k += 3;
+      } else if (tail.startsWith('π')){
+        k += 1;
+      } else if (/^[A-FXYM]\b/.test(tail)){
+        k += 1;
+      }
+    }
+
+    // nic rozumného? – nech to být (uživatel asi napsal něco složitějšího bez závorky)
+    if (startAtom === k){
+      i = j;
+      continue;
+    }
+
+    // máme atom -> obalíme do závorek
+    out += '(' + s.slice(startAtom, k) + ')';
+    i = k;
   }
   return out;
 }
@@ -1807,6 +2122,18 @@ function tokenize(s){
   }
   return t;
 }
+function substituteVars(tokens){
+  for (const t of tokens){
+    if (t.type==='id' && /^[A-FXYM]$/.test(t.value)){
+      const v = state.memVars[t.value];
+      // nenastavené: necháme NaN, aby šel chytit v eval (Error)
+      t.type = 'num';
+      t.value = (v==null ? NaN : +v);
+    }
+  }
+  return tokens;
+}
+
 function toRPN(tokens){
   const out=[], ops=[], argc=[];
   const prec={'unary-':5,'^':4,'*':3,'/':3,'mod':3,'+':2,'-':2,'!':6,'%':6};
@@ -2062,39 +2389,29 @@ if (state.eng)        return toEngineering(x);
     return toScientificSig(xRaw, n);
   }
 
-  // ---------- NORM 1 / NORM 2 ----------
-  // Celá čísla s >10 ciframi → vědecky.
-  // Desetinná: Norm1 dovolí max 2 desetinná místa, Norm2 max 9. Jinak vědecky.
+   // ---------- NORM 1 / NORM 2 ----------
+  // Vždy vědecky pro extrémně malé/velké hodnoty; jinak "normálně".
   const ax = Math.abs(x);
 
-  // integer?
-  if (Number.isInteger(x)) {
-    const digits = ax === 0 ? 1 : (Math.floor(Math.log10(ax)) + 1);
-    if (digits > 10) return toScientificAuto(x);
-    return applyDecSepToStr(stripZeros(x.toString()));
+  // 0 je prostě 0
+  if (ax === 0) return '0';
+
+  // Mimo „normální“ rozsah vždy SCI (tohle řeší 1.602e-19 apod.)
+  if (ax < 1e-9 || ax >= 1e10) {
+    return toScientificAuto(x);
   }
 
-  // kolik desetin je opravdu potřeba
+  // V “normálním” rozsahu: zaokrouhli podle Norm 1/2
   const decimalsNeeded = (val) => {
     const s = stripZeros(val.toFixed(12));
     const p = s.indexOf('.');
     return p === -1 ? 0 : (s.length - p - 1);
   };
 
-const limit = (state.norm === 2) ? 9 : 2;
-const decs  = decimalsNeeded(x);
+  const limit = (state.norm === 2) ? 9 : 2;
+  const decs  = decimalsNeeded(x);
+  return applyDecSepToStr(stripZeros(x.toFixed(Math.min(decs, 12))));
 
-// Pro „normální“ velikosti (ne extrémně malé/velké) nechoď do SCI,
-// jen zaokrouhli na limit míst — to řeší periodická čísla typu 1/3.
-if (Math.abs(x) >= 1e-9 && Math.abs(x) < 1e10) {
-  return applyDecSepToStr(stripZeros(x.toFixed(Math.min(limit, 12))));
-}
-
-// Mimo tenhle rozsah povol vědecký tvar (hodí se pro velmi malá/velká čísla).
-if (decs > limit) return toScientificAuto(x);
-
-// Jinak drž přesně tolik míst, kolik je třeba (do 12)
-return applyDecSepToStr(stripZeros(x.toFixed(Math.min(decs, 12))));
 
 }
 
@@ -2133,8 +2450,10 @@ const hadSep = /[ʟ]/.test(state.raw);   // detekujeme náš separátor ʟ z kl�
 const hadDMS = /[°′″]/.test(state.raw);
 const norm = normalizeInput(evalRaw);
 
-    const toks = tokenize(norm);
-    const rpn  = toRPN(toks);
+ let toks = tokenize(norm);
+toks = substituteVars(toks);
+const rpn = toRPN(toks);
+
     let res    = evalRPN(rpn);
 
     if(res && res.t==='pair'){
@@ -2194,6 +2513,7 @@ updateResultView();
 /* init */
 loadNorm();
 loadFixSci();          // <<< přidáno
+loadVars();
 /* === NOVÉ: načti perzistentní volby === */
 loadFracPref();
 loadDecSep();
