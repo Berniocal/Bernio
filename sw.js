@@ -1,5 +1,5 @@
-const CACHE_STATIC  = 'calc-static-v29';
-const CACHE_RUNTIME = 'calc-runtime-v29';
+const CACHE_STATIC  = 'calc-static-v30';
+const CACHE_RUNTIME = 'calc-runtime-v30';
 
 const PRECACHE = [
   '/',
