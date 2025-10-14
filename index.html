@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-73">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-74">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>  
@@ -2663,8 +2663,46 @@ function stop(){
 function startExamScan(){ QR.start('START'); }
 function endExamScan(){   QR.start('END'); }
 </script>
+  <script>
+  const NS = 'bernio-pwa';      // libovolný název (namespace)
+  const KEY = 'installs';       // libovolný název metriky
+  const API = `https://api.countapi.xyz`;
+
+  function bumpInstall() {
+    // zvýší čítač a vrátí nové číslo
+    fetch(`${API}/hit/${encodeURIComponent(NS)}/${encodeURIComponent(KEY)}`)
+      .then(r => r.json())
+      .then(data => console.log('PWA installs total:', data.value))
+      .catch(()=>{});
+  }
+
+  function getInstallCount() {
+    // jen načte aktuální hodnotu (bez zvýšení)
+    return fetch(`${API}/get/${encodeURIComponent(NS)}/${encodeURIComponent(KEY)}`)
+      .then(r => r.json())
+      .then(d => d.value);
+  }
+
+  // A) Android/Chrome: spustí se po reálné instalaci
+  window.addEventListener('appinstalled', () => {
+    if (!localStorage.getItem('pwaInstallLogged')) {
+      localStorage.setItem('pwaInstallLogged', '1');
+      bumpInstall();
+    }
+  });
+
+  // B) iOS/Safari: 'appinstalled' často neproběhne → zaloguj 1. spuštění ve standalone
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    if (!localStorage.getItem('pwaInstallLogged')) {
+      localStorage.setItem('pwaInstallLogged', '1');
+      bumpInstall();
+    }
+  }
+</script>
+
 </body>
 </html>
+
 
 
 
