@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-68">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-69">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -1143,6 +1143,33 @@ function smartDeleteUnit(){
   }
   return false;
 }
+function smartDeleteExponentBlock(){
+  // Cursor stojí přímo za ')'? Pak zkus smazat celý ^(...)
+  if (!(state.cursor > 0 && state.raw[state.cursor - 1] === ')')) return false;
+
+  // Najdi párovou '(' zpět i přes vnořené závorky
+  let i = state.cursor - 2;
+  let depth = 1;
+  for (; i >= 0; i--) {
+    const ch = state.raw[i];
+    if (ch === ')') depth++;
+    else if (ch === '(') {
+      depth--;
+      if (depth === 0) {
+        // i ukazuje na '('; před ní musí být '^'
+        if (i > 0 && state.raw[i - 1] === '^') {
+          const start = i - 1; // začátek bloku ^(
+          state.raw = state.raw.slice(0, start) + state.raw.slice(state.cursor);
+          state.cursor = start;
+          return true;
+        }
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
 function smartDeleteRootComma(){
   if(!(state.cursor>0 && state.raw[state.cursor-1]===',')) return false;
   let p = state.cursor-2;
@@ -1211,15 +1238,23 @@ function toggleFractionAtCursor(){
 }
 
 function back(){
-  if(smartDeleteRootComma()){ render(); return; }
-  if(smartDeleteUnit()){ render(); return; }
+  // 1) nejdřív zkus smazat celý exponent ^(...)
+  if (smartDeleteExponentBlock()){ render(); return; }
+
+  // 2) ostatní chytré mazání
+  if (smartDeleteRootComma()){ render(); return; }
+  if (smartDeleteUnit()){ render(); return; }
+
   if(state.resultShown && !state.editAfterResult){
     state.resultShown=false; state.resultStr=''; render(); return;
   }
   if(state.cursor<=0){ render(); return; }
+
+  // fallback: smaž 1 znak
   state.raw = state.raw.slice(0,state.cursor-1)+state.raw.slice(state.cursor);
   state.cursor--; render();
 }
+
 
 function moveCursor(step){ if(state.resultShown) state.editAfterResult=true; state.cursor=Math.max(0,Math.min(state.raw.length,state.cursor+step)); render(); }
 function ac(hard=false){
@@ -2627,6 +2662,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
