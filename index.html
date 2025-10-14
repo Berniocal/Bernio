@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-70">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-71">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -23,63 +23,62 @@
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     color:#fff; overscroll-behavior:contain;
   }
+
   .menu-top{ font-size: clamp(18px,4.2vw,22px); letter-spacing:.04em }
   .menu-bot{ font-size: clamp(16px,3.8vw,20px); font-weight:700 }
   .menu-grid{ display:flex; justify-content:space-between; padding:0 6px }
   .menu-grid span{ min-width: 30%; text-align:center }
-/* MODE – horní řádek: tři nápisy vlevo/na střed/vpravo, bez změny výšky */
-/* Horní MODE řádek – přesná L|C|R mřížka, velké jako zadávací text */
-/* Horní MODE řádek – Deg | Rad | Gra (nebo ExS | ExE | Tea) vlevo/střed/vpravo */
-.modebar{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  align-items:center;
-  width:100%;
-  margin:0; padding:0;
-}
-.modebar .label{
-  font-size:clamp(24px,6.2vw,33px); /* stejná jako zadávání */
-  line-height:1.15;
-  margin:0; padding:0;
-}
-.modebar .label:nth-child(1){ justify-self:start; }
-.modebar .label:nth-child(2){ justify-self:center; }
-.modebar .label:nth-child(3){ justify-self:end; }
 
-/* Spodní MODE řádek – 1 | 2 | 3 vlevo/střed/vpravo; velikost jako výsledky (.res) */
-.numrow{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  align-items:center;
-  width:100%;
-  margin:0; padding:0;
-  text-align:initial;     /* zruší pravé zarovnání .res pro tento obsah */
-  font-size:inherit;      /* zdědí clamp z .res → stejná velikost jako výsledky */
-}
-.numrow span:nth-child(1){ justify-self:start; }
-.numrow span:nth-child(2){ justify-self:center; }
-.numrow span:nth-child(3){ justify-self:end; }
-/* === MODE speciální layout pro spodní řádek s čísly === */
-.res.mode{
-  display:block;       /* v MODE nechceme flex-justify vpravo */
-  text-align:initial;
-  margin-left:0;
-  min-width:100%;
-  height:1.34em;       /* stejná FIXNÍ výška jako běžný výsledek */
-  overflow:hidden;
-}
+  /* MODE – horní řádek: tři nápisy vlevo/střed/vpravo */
+  .modebar{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    align-items:center;
+    width:100%;
+    margin:0; padding:0;
+  }
+  .modebar .label{
+    font-size:clamp(24px,6.2vw,33px);
+    line-height:1.15;
+    margin:0; padding:0;
+  }
+  .modebar .label:nth-child(1){ justify-self:start; }
+  .modebar .label:nth-child(2){ justify-self:center; }
+  .modebar .label:nth-child(3){ justify-self:end; }
 
-.res.mode .numrow{
-  display:grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  align-items:center;
-  width:100%;
-  height:100%;         /* vyplň celý řádek */
-}
+  /* Spodní MODE řádek – stejné měřítko jako výsledky */
+  .numrow{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    align-items:center;
+    width:100%;
+    margin:0; padding:0;
+    text-align:initial;
+    font-size:inherit;
+  }
+  .numrow span:nth-child(1){ justify-self:start; }
+  .numrow span:nth-child(2){ justify-self:center; }
+  .numrow span:nth-child(3){ justify-self:end; }
 
-.res.mode .numrow span:nth-child(1){ justify-self:start; }
-.res.mode .numrow span:nth-child(2){ justify-self:center; }
-.res.mode .numrow span:nth-child(3){ justify-self:end; }
+  /* MODE speciální layout pro spodní řádek s čísly */
+  .res.mode{
+    display:block;
+    text-align:initial;
+    margin-left:0;
+    min-width:100%;
+    height:1.36em;     /* drží fixní výšku stejně jako běžný výsledek */
+    overflow:hidden;
+  }
+  .res.mode .numrow{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items:center;
+    width:100%;
+    height:100%;
+  }
+  .res.mode .numrow span:nth-child(1){ justify-self:start; }
+  .res.mode .numrow span:nth-child(2){ justify-self:center; }
+  .res.mode .numrow span:nth-child(3){ justify-self:end; }
 
   .calc{
     width:min(480px,100vw);
@@ -91,63 +90,61 @@
     transform-origin: top center;
   }
   /* === TEST MODE UI === */
-body.exam-on .calc{
-  background: linear-gradient(var(--exam-c1, #ffe8f2), var(--exam-c2, #ffdbe8));
-}
+  body.exam-on .calc{
+    background: linear-gradient(var(--exam-c1, #ffe8f2), var(--exam-c2, #ffdbe8));
+  }
 
-.display{
-  background:var(--lcd); color:var(--lcd-text); border-radius:10px;
-  padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
-  font-family:ui-monospace,Menlo,Consolas,monospace;
-  display:grid; grid-template-rows:auto auto; gap:0px; /* menší mezera */
-  position:relative;
-}
-#exprWrap{
-  font-size:clamp(26px,7vw,36px);  /* o kousek větší než dřív */
-  line-height:1.28;
-  min-height:1.46em;
-  white-space:nowrap;
-  overflow:hidden;
-  position:relative;
-}
+  /* DISPLEJ – kalkulačkovější čísla, bez přeškrtnuté nuly, menší paddingy */
+  .display{
+    background:var(--lcd); color:var(--lcd-text); border-radius:10px;
+    padding:10px 14px 8px; /* méně vertikálního prostoru → víc na text */
+    box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
+    font-family:
+      "Cascadia Mono","Segoe UI Mono","Roboto Mono",
+      ui-monospace,Menlo,Consolas,monospace;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1, "zero" 0;
+    display:grid; grid-template-rows:auto auto; gap:0;
+    position:relative;
+  }
 
+  /* ZADÁVACÍ ŘÁDEK – větší, fixní výška (displej „neskáče“) */
+  #exprWrap{
+    font-size:clamp(28px,7.6vw,40px);
+    line-height:1.26;
+    min-height:1.50em;
+    white-space:nowrap;
+    overflow:hidden;
+    position:relative;
+  }
   #expr{display:block; width:100%; white-space:nowrap; padding-right:8px;}
 
-  .line2{display:flex; align-items:center; gap:8px; min-height:1.34em}
-
-  .badges{
-    position:absolute; top:4px; left:8px; right:8px;
-    display:flex; gap:8px; flex-wrap:wrap; pointer-events:none;
+  /* Druhá řádka displeje – menší mezera, stejná výška */
+  .line2{
+    display:flex; align-items:center; gap:4px; /* bylo 8px */
+    min-height:1.36em;
   }
-  .badge{
-    background:transparent; border:none; color:#1b2b3b;
-    border-radius:0; padding:0; font-size:.8em; line-height:1; user-select:none;
+
+  /* Výsledek – větší text, fixní výška */
+  .res{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    margin-left:auto;
+    font-size:clamp(28px,7.6vw,40px);
+    line-height:1.2;
+    font-weight:700;
+    min-width:40%;
+    height:1.36em;     /* fixní výška – stabilní displej */
+    overflow:hidden;
   }
-  .badge.auto{display:none}
-  .badge.auto.on{display:inline-flex}
-  .badge.always{display:inline-flex}
-
-.res{
-  display:flex;                   /* aby sup/exp nevytahoval řádek */
-  align-items:center;
-  justify-content:flex-end;       /* výsledek vpravo (mimo MODE) */
-  margin-left:auto;
-  font-size:clamp(26px,7.2vw,36px);
-  line-height:1.2;
-  font-weight:700;
-  min-width:40%;
-  height:1.34em;                  /* FIXNÍ výška řádku výsledku */
-  overflow:hidden;                /* nic nevyleze ven */
-}
-
-
 
   .res .sci .times, .res .sci .ten{ font-size:.8em; }
   .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
 
   .boards{display:grid;grid-template-rows:auto auto;gap:12px}
-  .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);} 
-  .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);} 
+  .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);}
+  .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);}
 
   .oval{background:var(--oval);color:#263445;border-radius:18px;padding:.6em .2em;text-align:center;font-weight:700;box-shadow:var(--shadow);touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
   #btnSHIFT{color:#b08c00} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}
@@ -156,26 +153,27 @@ body.exam-on .calc{
 
   .key{position:relative;border:none;border-radius:var(--r);padding:1.05em .3em .8em;text-align:center;box-shadow:var(--shadow);font-size:clamp(15px,3.2vw,19px);user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
   .key:active{transform:translateY(1px)}
-  .num{background:var(--num);color:var(--num-text)} .fn{background:var(--fn);color:var(--fn-text)}
-  .pink{background:var(--pink);color:#3b1c26} .pink.soft{background:var(--pink2)}
+  .num{background:var(--num);color:var(--num-text)}
+  .fn{background:var(--fn);color:var(--fn-text)}
+  .pink{background:var(--pink);color:#3b1c26}
+  .pink.soft{background:var(--pink);} /* DEL a AC stejná barva */
+
   .legend{position:absolute;top:6px;left:8px;font-size:.72em;color:#b08c00;opacity:.9;pointer-events:none}
   /* ALPHA label vpravo nahoře na tlačítkách */
-.legend.alpha{
-  left:auto;
-  right:8px;
-  color: var(--alpha);
-}
+  .legend.alpha{ left:auto; right:8px; color: var(--alpha); }
+
   .main{display:block}
   .botgrid .key{padding:.85em .25em .6em;font-size:clamp(22px,7.2vw,34px)}
   .root{position:relative;display:inline-block;padding-left:.05em}
   .root .rad{display:inline-block;padding-left:.2em;margin-left:.05em;border-top:2px solid currentColor;line-height:1}
   .root small{font-size:.7em;vertical-align:super;margin-right:.05em}
   .root.small .rad{border-top-width:1.6px}
-  .caret{display:inline-block;width:.7ch;text-align:center;animation:blink 1s step-end infinite;font-weight:700}
-  @keyframes blink{50%{opacity:0}} sup{font-size:.7em}
- 
 
+  .caret{display:inline-block;width:.7ch;text-align:center;animation:blink 1s step-end infinite;font-weight:700}
+  @keyframes blink{50%{opacity:0}}
+  sup{font-size:.7em}
 </style>
+
 </head>
 <body>
 <div class="calc" id="calc">
@@ -2662,6 +2660,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
