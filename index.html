@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-76">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-77">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>  
@@ -1253,6 +1253,125 @@ function smartDeleteExponentBlock(){
   }
   return false;
 }
+// === TOKEN-AWARE MAZÁNÍ A POHYB KURZORU ===
+const COMPOSITE_TOKENS = [
+  'ln(', 'log(', 'sqrt(', 'cbrt(', 'pow10(', 'exp(', 'root(', 'abs(', 'ceil(', 'floor(', 'inv(',
+  'Pol(', 'Rec(',
+  'sin ', 'cos ', 'tan ', 'asin ', 'acos ', 'atan ',
+  'sinh ', 'cosh ', 'tanh ', 'asinh ', 'acosh ', 'atanh ',
+  'fact('
+];
+
+// najdi token končící těsně před kurzorem
+function matchCompositeBeforeCursor(raw, cursor){
+  for (const t of COMPOSITE_TOKENS){
+    const L = t.length;
+    if (cursor >= L && raw.slice(cursor - L, cursor) === t){
+      return { start: cursor - L, end: cursor, token: t };
+    }
+  }
+  return null;
+}
+
+// najdi token začínající přesně na kurzoru
+function matchCompositeAtCursor(raw, cursor){
+  for (const t of COMPOSITE_TOKENS){
+    if (raw.slice(cursor, cursor + t.length) === t){
+      return { start: cursor, end: cursor + t.length, token: t };
+    }
+  }
+  return null;
+}
+
+// smazání celého složeného tokenu před kurzorem
+function smartDeleteComposite(){
+  const hit = matchCompositeBeforeCursor(state.raw, state.cursor);
+  if (!hit) return false;
+  state.raw = state.raw.slice(0, hit.start) + state.raw.slice(hit.end);
+  state.cursor = hit.start;
+  return true;
+}
+
+// přeskoč ^( … ) blok při pohybu nebo mazaní – vrátí {start,end} hranic exponentu
+function findExponentBlockAround(raw, pos){
+  // varianta se superscript markerem: SUPMARK + '^(' ... ')'
+  if (raw[pos] === SUPMARK && raw[pos+1] === '^' && raw[pos+2] === '('){
+    let j = pos + 3, depth = 1;
+    while (j < raw.length && depth > 0){
+      if (raw[j] === '(') depth++;
+      else if (raw[j] === ')') depth--;
+      j++;
+    }
+    if (depth === 0) return { start: pos, end: j }; // [SUPMARK, ')')
+  }
+  // varianta bez SUPMARK (ručně psané ^(...)
+  if (raw[pos] === '^' && raw[pos+1] === '('){
+    let j = pos + 2, depth = 1;
+    while (j < raw.length && depth > 0){
+      if (raw[j] === '(') depth++;
+      else if (raw[j] === ')') depth--;
+      j++;
+    }
+    if (depth === 0) return { start: pos, end: j };
+  }
+  // kurzor může stát ZA ')' – potřebujeme najít párovou '(' a '^' před ní
+  if (pos > 0 && raw[pos-1] === ')'){
+    let i = pos - 2, depth = 1;
+    while (i >= 0 && depth > 0){
+      if (raw[i] === ')') depth++;
+      else if (raw[i] === '(') depth--;
+      i--;
+    }
+    if (depth === 0){
+      // i ukazuje na znak před '('
+      const p = i;         // pozice '(' je p+1
+      const hasSup = (p-1 >= 0 && raw[p-1] === '^' && p-2 >=0 && raw[p-2] === SUPMARK);
+      const hasCare = (p-0 >= 0 && raw[p] === '^'); // fallback, kdyby to nesedělo
+      // hledej '^' přímo před '(' (s nebo bez SUPMARK)
+      if (p >= 1 && raw[p] === '(' && raw[p-1] === '^'){
+        const start = (p-2 >= 0 && raw[p-2] === SUPMARK) ? (p-2) : (p-1);
+        return { start, end: pos }; // [začátek bločku, kurzor]
+      }
+      if (hasSup || hasCare){
+        return { start: Math.max(0, p-1), end: pos };
+      }
+    }
+  }
+  return null;
+}
+
+// token-aware posun kurzoru o 1 krok vlevo/ vpravo
+function moveCursorTokenAware(step){
+  if (state.resultShown) state.editAfterResult = true;
+
+  if (step < 0){
+    // 1) zkus ^(...) blok
+    const expo = findExponentBlockAround(state.raw, state.cursor);
+    if (expo && expo.end === state.cursor){ state.cursor = expo.start; return; }
+
+    // 2) zkus složený token před kurzorem
+    const hit = matchCompositeBeforeCursor(state.raw, state.cursor);
+    if (hit){ state.cursor = hit.start; return; }
+
+    // 3) default o jeden
+    state.cursor = Math.max(0, state.cursor - 1);
+    return;
+  }
+
+  if (step > 0){
+    // 1) stojím na začátku ^(...) bloku?
+    const expo = findExponentBlockAround(state.raw, state.cursor);
+    if (expo && expo.start === state.cursor){ state.cursor = expo.end; return; }
+
+    // 2) začíná zde složený token?
+    const hit = matchCompositeAtCursor(state.raw, state.cursor);
+    if (hit){ state.cursor = hit.end; return; }
+
+    // 3) default o jeden
+    state.cursor = Math.min(state.raw.length, state.cursor + 1);
+    return;
+  }
+}
 
 function smartDeleteRootComma(){
   if(!(state.cursor>0 && state.raw[state.cursor-1]===',')) return false;
@@ -1322,10 +1441,13 @@ function toggleFractionAtCursor(){
 }
 
 function back(){
-  // 1) nejdřív zkus smazat celý exponent ^(...)
+  // 0) smazat celý exponent ^(...) včetně SUPMARK, pokud stojím za ')'
   if (smartDeleteExponentBlock()){ render(); return; }
 
-  // 2) ostatní chytré mazání
+  // 0.5) smazat složený token (ln(, log(, sin␠, asin␠, pow10(, …)
+  if (smartDeleteComposite()){ render(); return; }
+
+  // 1) ostatní chytré mazání
   if (smartDeleteRootComma()){ render(); return; }
   if (smartDeleteUnit()){ render(); return; }
 
@@ -1334,13 +1456,18 @@ function back(){
   }
   if(state.cursor<=0){ render(); return; }
 
-  // fallback: smaž 1 znak
+  // 2) fallback – smaž 1 znak
   state.raw = state.raw.slice(0,state.cursor-1)+state.raw.slice(state.cursor);
   state.cursor--; render();
 }
 
 
-function moveCursor(step){ if(state.resultShown) state.editAfterResult=true; state.cursor=Math.max(0,Math.min(state.raw.length,state.cursor+step)); render(); }
+
+function moveCursor(step){
+  moveCursorTokenAware(step);
+  render();
+}
+
 function ac(hard=false){
   state.raw=''; state.cursor=0; if(hard){ state.ans=0; }
   state.resultShown=false; state.resultStr=''; state.lastRes=null;
@@ -1881,6 +2008,10 @@ s = s.replace(/RAN#(?!\s*\()/g, 'RAN#()'); // RAN# → RAN#() pokud nemá ( )
 
 // --- tady: nejdřív chyť "sin 60" → sin(60) (mezery nám pomůžou)
 s = applyImplicitTrig(s);
+
+// --- implicitní násobení: číslo těsně před π -> vlož *
+s = s.replace(/(\d(?:\.\d+)?)(\s*)π/g, '$1*$2π');
+
 
 // teprve teď mezery pryč
 s = s.replace(/\s+/g,'');
