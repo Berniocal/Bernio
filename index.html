@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-77">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-78">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>  
@@ -2496,55 +2496,101 @@ function degToDMS(x){
 }
 
 function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/60+s/3600); }
+// ===== MĚŘENÍ, ZDA SE TEXT VEJDE NA ŘÁDEK VÝSLEDKU =====
+let __measureSpan = null;
+function fitsResultLine(text){
+  const host = resEl;
+  if (!host) return true;
+  if (!__measureSpan){
+    __measureSpan = document.createElement('span');
+    __measureSpan.style.position = 'absolute';
+    __measureSpan.style.visibility = 'hidden';
+    __measureSpan.style.whiteSpace = 'nowrap';
+    __measureSpan.style.pointerEvents = 'none';
+    host.appendChild(__measureSpan);
+  }
+  __measureSpan.textContent = text;
+  // malá rezerva proti zlomu
+  const pad = 4;
+  return __measureSpan.scrollWidth <= (host.clientWidth - pad);
+}
+
+// tečka/čárka dle nastavení
+function applySep(s){ return state.decSep === ',' ? s.replace(/\./g, ',') : s; }
+
+// vrátí fixní formát s daným počtem desetinných míst a správným oddělovačem
+function toFixedSep(x, n){
+  let s = Number(x).toFixed(Math.max(0, n|0));
+  return applySep(s);
+}
+
+// Zformátuj „obyčejné“ desetinné číslo tak, aby se VEŠLO do displaye.
+// - startDec: kolik des. míst zkusit nejdřív (Norm → dynamický, Fix → požadované)
+// - preferSciWhenNoFrac: pokud by nezbylo žádné desetinné místo, přepni na SCI
+function formatDecimalFitting(x, startDec, preferSciWhenNoFrac = true){
+  // Pokud samotná celočíselná část je obří, rovnou SCI
+  const intStr = Math.trunc(Math.abs(x)).toString();
+  // Přičti 1 na minus/znamení nebo nulu před desetinnou čárkou
+  const baseMin = (x < 0 ? 1 : 0) + Math.max(1, intStr.length);
+  // Když ani „integer“ + oddělovač + 1 desetinné místo nemá šanci, jdi na SCI
+ 
+
+  // Zkoušej postupně zkracovat počet des. míst, dokud se to nevejde.
+  for (let d = startDec; d >= 0; d--){
+    const s = toFixedSep(x, d);
+    if (fitsResultLine(s)){
+      if (d === 0 && preferSciWhenNoFrac) return toScientificAuto(x);
+      return s;
+    }
+  }
+  // Bez šance → SCI
+  return toScientificAuto(x);
+}
 
 function formatNumWithOptions(v){
   if(!isFinite(v)) return String(v);
 
-  const xRaw = +v;                 // pro FIX/SCI (zachováme koncové nuly atd.)
-  const x    = roundSig(v,12);     // pro Norm/DMS/ENG/FRAC je fajn uhlazení
+  const xRaw = +v;               // přesná hodnota (pro Fix/Sci)
+  const x    = roundSig(v,12);   // uhlazené (pro Norm)
 
-  // DMS / ENG / FRAC (mají přednost)
-if (state.dmsDisplay) return degToDMS(x);
-if (state.frac)       return toFractionStr(x, state.fracMixed);
-if (state.eng)        return toEngineering(x);
+  // ----- prioritní režimy (beze změny) -----
+  if (state.dmsDisplay) return degToDMS(x);
+  if (state.frac)       return toFractionStr(x, state.fracMixed);
+  if (state.eng)        return toEngineering(x);
 
-  // FIX – přesně n desetinných (0..9), jen pro výpis
-  if (state.fix != null) {
-    const n = Math.max(0, Math.min(9, state.fix|0));
-    return applyDecSepToStr(xRaw.toFixed(n));
-  }
+// ----- FIX: přesně n desetinných; když se nevejde, rovnou SCI -----
+if (state.fix != null) {
+  const n = Math.max(0, Math.min(9, state.fix|0));
+  const s = toFixedSep(xRaw, n);      // přesně n míst + správný oddělovač
+  return fitsResultLine(s) ? s : toScientificAuto(xRaw);
+}
 
-  // SCI – n platných číslic (0=10)
+  // ----- SCI: n platných číslic (0=10) – beze změny -----
   if (state.sci != null) {
     const n = (state.sci|0) === 0 ? 10 : Math.max(1, Math.min(10, state.sci|0));
     return toScientificSig(xRaw, n);
   }
 
-   // ---------- NORM 1 / NORM 2 ----------
-  // Vždy vědecky pro extrémně malé/velké hodnoty; jinak "normálně".
+  // ----- NORM 1 / NORM 2 -----
+  // mimo „normální“ rozsah vždy vědecky
   const ax = Math.abs(x);
-
-  // 0 je prostě 0
   if (ax === 0) return '0';
+  if (ax < 1e-9 || ax >= 1e10) return toScientificAuto(x);
 
-  // Mimo „normální“ rozsah vždy SCI (tohle řeší 1.602e-19 apod.)
-  if (ax < 1e-9 || ax >= 1e10) {
-    return toScientificAuto(x);
-  }
-
-  // V “normálním” rozsahu: zaokrouhli podle Norm 1/2
+  // „normální“ rozsah → spočti, kolik des. míst by bylo potřeba, a pak
+  // šířkou omezený formátovač je zkrátí, kdyby to přetékalo.
   const decimalsNeeded = (val) => {
     const s = stripZeros(val.toFixed(12));
     const p = s.indexOf('.');
     return p === -1 ? 0 : (s.length - p - 1);
   };
+  const limit = (state.norm === 2) ? 9 : 2;      // Norm 2 dovolí víc detailu
+  const want  = Math.min(decimalsNeeded(x), 12, limit);
 
-  const limit = (state.norm === 2) ? 9 : 2;
-  const decs  = decimalsNeeded(x);
-  return applyDecSepToStr(stripZeros(x.toFixed(Math.min(decs, 12))));
-
-
+  // Pokud by se to nevešlo a museli bychom useknout na 0, přepni na SCI.
+  return formatDecimalFitting(x, want, /*preferSciWhenNoFrac=*/true);
 }
+
 
 
  
@@ -3116,18 +3162,3 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
