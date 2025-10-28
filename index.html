@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-78">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-79">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>  
@@ -2538,10 +2538,10 @@ function formatDecimalFitting(x, startDec, preferSciWhenNoFrac = true){
   // Zkoušej postupně zkracovat počet des. míst, dokud se to nevejde.
   for (let d = startDec; d >= 0; d--){
     const s = toFixedSep(x, d);
-    if (fitsResultLine(s)){
-      if (d === 0 && preferSciWhenNoFrac) return toScientificAuto(x);
-      return s;
-    }
+if (fitsResultLine(s)){
+  return s; // když se to vejde, nechoď do SCI jen kvůli d===0
+}
+
   }
   // Bez šance → SCI
   return toScientificAuto(x);
@@ -2571,11 +2571,15 @@ if (state.fix != null) {
     return toScientificSig(xRaw, n);
   }
 
-  // ----- NORM 1 / NORM 2 -----
-  // mimo „normální“ rozsah vždy vědecky
-  const ax = Math.abs(x);
-  if (ax === 0) return '0';
-  if (ax < 1e-9 || ax >= 1e10) return toScientificAuto(x);
+// ----- NORM 1 / NORM 2 -----
+// mimo „normální“ rozsah vždy vědecky
+const ax = Math.abs(x);
+if (ax === 0) return '0';
+const smallCut = (state.norm === 1) ? 1e-2 : 1e-9; // Norm1 = 10^-2, Norm2 = 10^-9
+const bigCut   = 1e10;
+if (ax < smallCut || ax >= bigCut) return toScientificAuto(x);
+
+
 
   // „normální“ rozsah → spočti, kolik des. míst by bylo potřeba, a pak
   // šířkou omezený formátovač je zkrátí, kdyby to přetékalo.
@@ -2590,10 +2594,6 @@ if (state.fix != null) {
   // Pokud by se to nevešlo a museli bychom useknout na 0, přepni na SCI.
   return formatDecimalFitting(x, want, /*preferSciWhenNoFrac=*/true);
 }
-
-
-
- 
 
 function updateResultView(){
   if(!state.lastRes){ state.resultStr=''; state.resultShown=false; render(); return; }
