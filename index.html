@@ -1746,15 +1746,21 @@ onPDAll('[data-trig]', el=>{
 
 
 
-onPD(qs('#btn0'),  ()=>{ if(state.shift){ state.shift=false; insRaw('Rnd(');} else insRaw('0'); });
-onPD(qs('#btnDot'),()=>{
-  if(state.shift){
-    state.shift=false;
-    insRaw('RAN#');       // bez závorek
+onPD(qs('#btn0'), ()=>{
+  // když je otevřené MODE menu (Fix/Sci/…),
+  // posílej "0" do menu místo vkládání do řádku
+  if (state.modeStage > 0) { 
+    handleMenuChoice('0'); 
+    return; 
+  }
+  if (state.shift){ 
+    state.shift = false; 
+    insRaw('Rnd(');
   } else {
-    insRaw('.');
+    insRaw('0');
   }
 });
+
 
 onPD(qs('#btnEXP'),()=>{ if(state.shift){ state.shift=false; insRaw('π'); } else insRaw('E'); });
 onPD(qs('#btnAns'), ()=>{ 
@@ -2426,7 +2432,40 @@ function toScientificAuto(x){
   if (state.decSep===',') mant = mant.replace(/\./g, ',');
   return `<span class="sci">${mant}<span class="times">×</span><span class="ten">10</span><sup class="exp">${e}</sup></span>`;
 }
-  
+
+  // Vědecký zápis s přesným počtem číslic mantisy (bez čárky). sigDigits ∈ {1..10}
+function toScientificDigits(x, sigDigits){
+  if (!isFinite(x)) return String(x);
+  const sign = x < 0 ? '-' : '';
+  let ax = Math.abs(x);
+
+  if (ax === 0){
+    // 0 -> "0" (jedna číslice), exponent 0
+    const mant = '0';
+    return sign + `<span class="sci"><span class="mant">${mant}</span><span class="pow">×10<sup>0</sup></span></span>`;
+  }
+
+  let e = Math.floor(Math.log10(ax));
+  let m = ax / Math.pow(10, e); // m ∈ [1,10)
+
+  // Vyrobíme integer s přesně sigDigits číslicemi (zaokrouhlení)
+  const scale = Math.pow(10, sigDigits - 1);
+  let mantInt = Math.round(m * scale); // např. pro sigDigits=4: 1.234 → 1234
+
+  // Přetečení typu 9.999… -> 10000
+  const limit = Math.pow(10, sigDigits);
+  if (mantInt >= limit){
+    e += 1;
+    mantInt = Math.pow(10, sigDigits - 1); // 1000… (1 + (sigDigits-1) nul)
+  }
+
+  // Z integeru složíme mantisu s čárkou po 1. číslici (číslice se počítají bez čárky)
+  let s = String(mantInt).padStart(sigDigits, '0');
+  let mant = (sigDigits === 1) ? s : (s[0] + ',' + s.slice(1));
+
+  return sign + `<span class="sci"><span class="mant">${mant}</span><span class="pow">×10<sup>${e}</sup></span></span>`;
+}
+
 function toScientificSig(x, sig=10){
   if(!isFinite(x)) return String(x);
   if(x===0) return '0';
@@ -2595,52 +2634,67 @@ if (ax < smallCut || ax >= bigCut) return toScientificAuto(x);
   return formatDecimalFitting(x, want, /*preferSciWhenNoFrac=*/true);
 }
 
-// === MAX 10 číslic na výsledkovém řádku (bez znamení, oddělovače a exponentu) ===
 function limitDigits10(rendered, value){
-  // Pokud je vědecký zápis (naše HTML <span class="sci">...), vygeneruj 10 platných číslic
+  // Když je to SCI, zkontroluj počet číslic v mantise; když je ≤10, nech být
   if (typeof rendered === 'string' && /class="sci"/.test(rendered)) {
-    return toScientificSig(+value, 10);
+    const mant = (rendered.match(/<span class="mant">([^<]+)<\/span>/) || [,''])[1] || '';
+    const digits = mant.replace(/[^\d]/g,'').length;
+    if (digits <= 10) return rendered;
+    // Kdyby někdy přeteklo (nemělo by), vynuceně ořízni na 10
+    return toScientificDigits(+value, 10);
   }
 
-  // Jinak je to "obyčejný" zápis (celé/decimální): spočítat číslice a případně zkrátit
+  // ... zbytek tvé původní verze pro "obyčejný" zápis beze změny ...
   const countDigits = s => (s||'').replace(/[^\d]/g,'').length;
   let out = String(rendered);
   if (countDigits(out) <= 10) return out;
 
-  // kolik má celá část číslic
   const intDigits = Math.trunc(Math.abs(+value)).toString().length || 1;
-
-  // kolik desetinných míst můžeme nechat, aby celkem bylo <= 10 číslic
   let keep = Math.max(0, 10 - intDigits);
-
-  // zkusit s tolika desetinnými místy
   let s = toFixedSep(+value, keep);
   let d = countDigits(s);
-
-  // kdyby po zaokrouhlení stále přetékalo (např. 9.999… -> 10.000… zvýší intDigits),
-  // krokově snižuj, a když už to nejde, spadni do SCI s 10 platnými číslicemi
   while (d > 10 && keep > 0){
     keep -= 1;
     s = toFixedSep(+value, keep);
     d = countDigits(s);
   }
-  if (d > 10) {
-    // fallback – vědecký s 10 signifikantními
-    return toScientificSig(+value, 10);
-  }
+  if (d > 10) return toScientificDigits(+value, 10);
   return s;
 }
 
+
 function updateResultView(){
-  if(!state.lastRes){ state.resultStr=''; state.resultShown=false; render(); return; }
- if (state.lastRes.type === 'num'){
-  const body = formatNumWithOptions(state.lastRes.v);
-  const limited = limitDigits10(body, state.lastRes.v);
-  state.resultStr = limited + (state.percentSuffix || '');
- }
-  else if(state.lastRes.type==='pair'){ state.resultStr = `(${formatNumWithOptions(state.lastRes.a)}, ${formatNumWithOptions(state.lastRes.b)})`; }
-  state.resultShown=true; render();
+  if (!state.lastRes){
+    state.resultStr = '';
+    state.resultShown = false;
+    render();
+    return;
+  }
+
+  if (state.lastRes.type === 'num'){
+    // 1) Zformátuj podle zvoleného režimu (Norm/Fix/Sci/…)
+    let body = formatNumWithOptions(state.lastRes.v);
+
+    // 2) Pokud výstup je ve vědeckém zápisu a uživatel je v SCI režimu,
+    //    přegeneruj mantisu přesně na počet platných číslic z state.sci (0→10).
+    if (typeof body === 'string' && /class="sci"/.test(body) && state.sci != null){
+      const n = (state.sci|0) === 0 ? 10 : Math.max(1, Math.min(10, state.sci|0));
+      body = toScientificDigits(state.lastRes.v, n);
+    }
+
+    // 3) Globální limit: max 10 číslic (nepočítá se znamení, čárky, "×10^a")
+    const limited = limitDigits10(body, state.lastRes.v);
+    state.resultStr = limited + (state.percentSuffix || '');
+  }
+  else if (state.lastRes.type === 'pair'){
+    state.resultStr = `(${formatNumWithOptions(state.lastRes.a)}, ${formatNumWithOptions(state.lastRes.b)})`;
+  }
+
+  state.resultShown = true;
+  render();
 }
+
+
 function evaluate(){
   try{
         // --- Zachyť jednotku vstupu: DEG (°/DMS), RAD (…r), GRAD (…g)
