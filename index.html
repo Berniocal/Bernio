@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-80">
+<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-81">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>  
@@ -1742,6 +1742,18 @@ onPDAll('[data-trig]', el=>{
   else { raw = base + ' '; }                                     // sin␠
   state.shift = false;
   insRaw(raw);
+});
+// --- Tlačítko tečky / Ran# ---
+onPD(document.getElementById('btnDot'), () => {
+  if (state.shift) {
+    // SHIFT + Ran# → náhodné číslo 0–1
+    clearForNewEntry();
+    const r = Math.random();
+    insRaw(String(r.toFixed(6))); // 6 desetinných míst
+  } else {
+    // běžný režim → desetinná tečka
+    insRaw('.');
+  }
 });
 
 
