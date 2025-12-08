@@ -554,12 +554,18 @@ if (state.modeStage === 131){
   state.fix = null;
   state.sci = null;
   saveFixSci();
-
   saveNorm();
+
   state.modeStage = 0;
-  render();
+
+  if (state.lastRes && state.lastRes.type === 'num') {
+    updateResultView();
+  } else {
+    render();
+  }
   return true;
 }
+
 
   if (state.modeStage === 14){
     // Stisk "1" -> submenu zlomků/oddělovače
@@ -567,6 +573,7 @@ if (state.modeStage === 131){
     state.modeStage = 0; render();
     return true;
   }
+
 if (state.modeStage === 130){
   // Fix 0~9? → přesně n desetinných míst; 0..9
   if (/^[0-9]$/.test(digit)) {
@@ -575,7 +582,13 @@ if (state.modeStage === 130){
     saveFixSci();
   }
   state.modeStage = 0;
-  render();
+
+  // po změně režimu hned přeformátuj případný výsledek
+  if (state.lastRes && state.lastRes.type === 'num') {
+    updateResultView();          // volá i render()
+  } else {
+    render();
+  }
   return true;
 }
 
@@ -587,9 +600,15 @@ if (state.modeStage === 132){
     saveFixSci();
   }
   state.modeStage = 0;
-  render();
+
+  if (state.lastRes && state.lastRes.type === 'num') {
+    updateResultView();
+  } else {
+    render();
+  }
   return true;
 }
+
 
 /* === NOVÉ: submenu 141 (zlomky) a 142 (oddělovač) === */
 if (state.modeStage === 141){
@@ -886,6 +905,15 @@ function loadNorm(){
   }catch(_){}
 }
 
+let _modesLoadedOnce = false;
+function ensureModesLoaded(){
+  if (_modesLoadedOnce) return;
+  try{
+    loadNorm();
+    loadFixSci();
+  }catch(_){}
+  _modesLoadedOnce = true;
+}
 
 /* ===== pretty + caret, auto scroll kurzoru ===== */
 function prettySegments(raw){
@@ -2597,12 +2625,18 @@ if (fitsResultLine(s)){
   // Bez šance → SCI
   return toScientificAuto(x);
 }
-
 function formatNumWithOptions(v){
   if(!isFinite(v)) return String(v);
 
+  // Pojistka: při prvním formátování načti uložené režimy Norm/Fix/Sci
+  ensureModesLoaded();
+
   const xRaw = +v;               // přesná hodnota (pro Fix/Sci)
   const x    = roundSig(v,12);   // uhlazené (pro Norm)
+
+  // --- OPRAVA: zajistí, že režimy se NEBUDE ignorovat při prvním průchodu ---
+  loadNorm();
+  loadFixSci();
 
   // ----- prioritní režimy (beze změny) -----
   if (state.dmsDisplay) return degToDMS(x);
@@ -2801,6 +2835,39 @@ loadDecSep();
 render();
 fitToViewport();
 updateExamUI();
+
+
+// --- AUTO ZAHŘÍVACÍ VÝPOČET S 1÷3 + AC ---
+// Po startu kalkulačka potichu spočítá 1÷3, tím se „probere“ formátování
+// pro desetinná čísla (Norm2/Fix/Sci), a pak se udělá AC,
+// takže na displeji nic nebude. Ans si vrátíme na původní hodnotu.
+
+setTimeout(() => {
+  try {
+    const prevAns = state.ans;  // schovej si starý Ans
+
+    // začni s prázdným vstupem
+    state.raw = '';
+    state.cursor = 0;
+    state.resultShown = false;
+    state.resultStr = '';
+
+    // skrytě zadáme 1÷3 přes stejné funkce jako klávesnice
+    insRaw('1');
+    insRaw('÷');
+    insRaw('3');
+    evaluate();   // proběhne formátování pro desetinný výsledek
+
+    // vynulujeme displej jako po AC
+    ac();         // ac(false) nevymaže Ans
+
+    // vrátíme původní Ans, aby nebyl 1/3
+    state.ans = prevAns;
+  } catch (e) {
+    // kdyby se něco pokazilo, tiše to ignorujeme
+  }
+}, 0);
+
 
 
 /* klávesnice */
