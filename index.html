@@ -195,14 +195,35 @@ body.exam-on .calc{
   .caret{display:inline-block;width:.7ch;text-align:center;animation:blink 1s step-end infinite;font-weight:700}  
 .root .rad.empty {
   display: inline-block;
-  height: 0.2em;          /* malá výška, aby šla čára nahoru */
+  height: 0.25em;          /* malá výška, aby šla čára nahoru */
   width: 0.7em;           /* délka čárky */
   border-top: 1px solid currentColor; /* čára nahoře */
   vertical-align: top;    /* posune čárku nahoru */
   position: relative;
   top: 0.1em;           /* jemné dorovnání pod střechu odmocniny */
 }
+.root .radical-n {
+  position: relative;
+  display: inline-block;
+  /* trošku místa, aby se to nelepilo na exponent */
+  margin-left: -0.5em;
+  width: 2em;          /* délka čárky – můžeš si doladit */
+}
 
+/* samotný znak odmocniny */
+.root .radical-n::before {
+  content: "√";
+}
+
+/* vodorovná čára napojená na „střechu“ */
+.root .radical-n::after {
+  content: "";
+  position: absolute;
+  left: 1.22em;          /* kde začne čára – doladíš podle vzhledu */
+  right: 0;              /* konec čáry */
+  top: 0em;           /* výška čáry nad textovou osou */
+  border-top: 1px solid currentColor;
+}
 
   @keyframes blink{50%{opacity:0}} sup{font-size:.7em}  
    
@@ -248,12 +269,12 @@ body.exam-on .calc{
       <button class="key fn" id="btnInv"><span class="legend">x!</span><span class="main">x⁻¹</span></button>
       <button class="key fn" id="btnComb"><span class="legend">nPr</span><span class="main">nCr</span></button>
       <button class="key fn" id="btnPolRec"><span class="legend">Rec(</span><span class="legend alpha">:</span><span class="main">Pol(</span></button>
-      <button class="key fn" id="btnPow3"><span class="legend"><span class="root small"><small>3</small>√<span class="rad empty"></span></span></span><span class="main">x³</span></button>
+      <button class="key fn" id="btnPow3"><span class="legend"><span class="root small"><small>3</small><span class="radical-n"></span></span></span><span class="main">x³</span></button>
 
       <button class="key fn" id="btnFracKey"><span class="legend">d/c</span><span class="main">a b/c</span></button>
-      <button class="key fn" id="btnSqrt"><span class="main"><span class="root">√<span class="rad empty"></span></span></span></button>
+      <button class="key fn" id="btnSqrt"><span class="main"><span class="root"><span class="radical-n"></span></span></span></button>
       <button class="key fn" id="btnPow2"><span class="main">x²</span></button>
-<button class="key fn" id="btnPow"><span class="legend"><span class="root small">ˣ√<span class="rad empty"></span></span></span><span class="main">^</span></button>
+<button class="key fn" id="btnPow"><span class="legend"><span class="root small"><small>x</small><span class="radical-n"></span></span></span><span class="main">^</span></button>
 
 
       <button class="key fn" data-fn="log"><span class="legend">10ˣ</span><span class="main">log</span></button>
@@ -3360,6 +3381,3 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
-
-
-
