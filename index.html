@@ -242,7 +242,13 @@ body.exam-on .calc{
       <button class="key fn" id="btnFracKey"><span class="legend">d/c</span><span class="main">a b/c</span></button>
       <button class="key fn" id="btnSqrt"><span class="main"><span class="root">√<span class="rad">x</span></span></span></button>
       <button class="key fn" id="btnPow2"><span class="main">x²</span></button>
-      <button class="key fn" id="btnPow"><span class="legend"><span class="root small"><small>y</small>√<span class="rad">x</span></span></span><span class="main">^</span></button>
+            <button class="key fn" id="btnPow">
+        <span class="legend">
+          <span class="root small"><small>ˣ</small><span class="rad">x</span></span>
+        </span>
+        <span class="main">^</span>
+      </button>
+
       <button class="key fn" data-fn="log"><span class="legend">10ˣ</span><span class="main">log</span></button>
     <button class="key fn" data-fn="ln"><span class="legend">eˣ</span><span class="legend alpha">e</span><span class="main">ln</span></button>
 
@@ -937,7 +943,16 @@ if (raw.slice(i, i+4) === 'atan' && isWordBoundary(raw[i+4])) {
     if(raw.startsWith('cbrt(',i)){  push('∛(',5); i+=5; continue; }
     if(raw.startsWith('root(',i)){
       let j=i+5,y=''; while(j<raw.length&&/[0-9.]/.test(raw[j])) y+=raw[j++];
-      if(raw[j]===','){ push(y+'√(', j-i+1); i=j+1; continue; }
+      if(raw[j]===','){ 
+        // root(y, ...) → zobraz jako y√(
+        push(y+'√(', j-i+1); 
+        i=j+1; 
+        continue; 
+      }
+      // root( bez čárky → zobraz generický zápis ˣ√(
+      push('ˣ√(', 5);
+      i+=5;
+      continue;
     }
 // superscript POUZE pokud je před '^' náš marker (vkládají x⁻¹/x²/x³)
 if (raw[i] === SUPMARK && raw[i+1] === '^' && raw[i+2] === '(') {
@@ -1571,13 +1586,13 @@ onPD(qs('#btnInv'), ()=>{
   clearForNewEntry();
   if(state.shift){
     state.shift=false;
-    if(state.cursor>0 && /[0-9\)]/.test(state.raw[state.cursor-1])) insRaw('!');
-    else insRaw('fact(');
+    // vždy vkládej čistý postfix "!" – argument čeká vlevo
+    insRaw('!');
   } else {
-   insRaw(SUPMARK + '^(-1)');
-
+    insRaw(SUPMARK + '^(-1)');
   }
 });
+
 
 
 function insertCP(op){ if(state.resultShown && !state.editAfterResult) return; if(state.cursor===0 || !/[0-9]/.test(state.raw[state.cursor-1])) return; insRaw(op); }
@@ -2056,11 +2071,15 @@ s = s.replace(/RAN#(?!\s*\()/g, 'RAN#()'); // RAN# → RAN#() pokud nemá ( )
 s = applyImplicitTrig(s);
 
 // --- implicitní násobení: číslo těsně před π -> vlož *
-s = s.replace(/(\d(?:\.\d+)?)(\s*)π/g, '$1*$2π');
+s = s.replace(/(\d+(?:\.\d+)?)(\s*)π/g, '$1*$2π');
+
+// --- EXP se závorkou: 5E(-3) -> 5*10^(-3)
+s = s.replace(/(\d+(?:\.\d+)?)[Ee]\(/g, '$1*10^(');
 
 
 // teprve teď mezery pryč
 s = s.replace(/\s+/g,'');
+
 
 // a pak auto-dovírání NETRIG unárních funkcí
 s = autoCloseUnary(s);
