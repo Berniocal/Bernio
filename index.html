@@ -922,7 +922,7 @@ try{
   alert('Nelze se připojit k testu.\n' + String(e.message||e));
   return;
 }
-}
+
 
     // označ token jako použitý
     used[token] = { used:true, locked:false, day: day||null, code: normCode, usedAt: Date.now() };
@@ -3548,4 +3548,5 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
