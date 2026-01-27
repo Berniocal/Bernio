@@ -892,17 +892,19 @@ const Exam = (() => {
       return;
     }
 
-    // Identifikátor (přezdívka)
+    // Identifikátor (přezdívka) – server je přísný na "input", tak to normalizujeme
     let ident = (window.prompt && window.prompt('Zadej svou přezdívku:')) || '';
     ident = String(ident||'').trim();
+    // povolíme běžné znaky a omezíme délku (kvůli validaci ve Workeru)
+    ident = ident.replace(/\s+/g,' ').replace(/[^\p{L}\p{N} _.-]/gu,'').trim().slice(0,24);
     if (!ident){ alert('Bez přezdívky nelze pokračovat.'); return; }
 
-    // připoj se do roomu (server potřebuje jen code+ident; token posíláme navíc, když by se hodil)
+    // Připoj se do roomu – Worker očekává přesně { code, ident } (jinak vrací "Bad input")
     try{
       const resp = await fetch(API('api/join'), {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ code: normCode, ident, token, day, fromTs, toTs })
+        body: JSON.stringify({ code: normCode, ident })
       });
       const text = await resp.text();
       const data = text ? JSON.parse(text) : null;
