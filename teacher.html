@@ -141,6 +141,7 @@
 const API_BASE = "https://examqr.jendabernard.workers.dev";
 
 const TEACHER_GEN_KEY = 'bernio.teacher.generated.v1';
+const TEACHER_LAST_CODE_KEY = "bern_teacher_last_code_v1";
 
 function loadGenerated(){
   try{ return JSON.parse(localStorage.getItem(TEACHER_GEN_KEY) || '{}') || {}; }catch(_){ return {}; }
@@ -253,12 +254,16 @@ async function pollRoom(){
 async function refreshUsed(){
   const map = loadGenerated();
   const today = toLocalDayStr(Date.now());
-  const p = map[today];
-  if (!p) { usedEl.textContent = '—'; return; }
-  const f = new Date(p.fromTs);
-  const t = new Date(p.toTs);
-  const hhmm = (d)=> String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  usedEl.textContent = `${p.code} (${today} ${hhmm(f)}–${hhmm(t)})`;
+  const day = map[today];
+  if (!day || typeof day !== 'object') { usedEl.textContent = '—'; return; }
+
+  const items = Object.values(day).filter(Boolean);
+  if (!items.length) { usedEl.textContent = '—'; return; }
+
+  const fmt = (ts)=>{ const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  // seřaď podle startu
+  items.sort((a,b)=>(a.fromTs||0)-(b.fromTs||0));
+  usedEl.textContent = items.map(p=> `${p.code} ${fmt(p.fromTs)}–${fmt(p.toTs)}`).join(' , ');
 }
 
 async function generate(){
@@ -280,36 +285,24 @@ async function generate(){
   const dayTo   = toLocalDayStr(toTs);
   if (dayFrom !== dayTo) { showToast('OD a DO musí být ve stejný den.','err'); return; }
 
-  // Jeden QR na den (v tomto prohlížeči)
+  // Více QR denně je ok, ale nesmí se vygenerovat stejný 3místný kód ve stejný den (v tomto prohlížeči)
   const map = loadGenerated();
-  if (map[dayFrom]) {
-    showToast(`Pro den ${dayFrom} už byl QR vygenerován.`, 'err');
+  map[dayFrom] = map[dayFrom] || {};
+  if (map[dayFrom][code]) {
+    showToast(`Kód ${code} už byl pro den ${dayFrom} vygenerován.`, 'err');
     // nastav aktuální kód pro roster
-    currentCode = map[dayFrom].code;
+    currentCode = code;
     document.getElementById('curCode').textContent = currentCode;
+    localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode);
     if (rosterTimer) clearInterval(rosterTimer);
     rosterTimer = setInterval(pollRoom, 1000);
     pollRoom();
     refreshUsed();
+    // a rovnou vykresli existující QR, aby šel znovu ukázat
+    try{ await drawQR(JSON.stringify({payload: JSON.stringify(map[dayFrom][code])})); }catch{}
     return;
   }
 
-  const token = genToken();
-  const payload = { v:1, code, type:'START', day: dayFrom, fromTs, toTs, token };
-  const wrapped = { payload: JSON.stringify(payload) };
-
-  try{
-    await drawQR(JSON.stringify(wrapped));
-  }catch(e){
-    showToast('QR se nepodařilo vygenerovat: ' + (e.message||e), 'err');
-    return;
-  }
-
-  map[dayFrom] = payload;
-  saveGenerated(map);
-  refreshUsed();
-
-  currentCode = code;
   document.getElementById('curCode').textContent = currentCode;
   showToast(`${code} • aktivní ${dayFrom} ${fromVal.slice(11)}–${toVal.slice(11)}`, 'ok');
 
