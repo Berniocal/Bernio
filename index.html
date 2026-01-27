@@ -765,7 +765,7 @@ function stopHiddenVideoTrick() {
 
 // Minimalistický Exam (bez senzorů, bez zvuků, jen UI + eventy)
 const Exam = (() => {
-  const S = { active:false, pid:null, startAt:0, timerId:0 };
+  const S = { active:false, pid:null, startAt:0, timerId:0, token:null };
 
   function setUIOn(code){
     state.examActive = true;
@@ -795,21 +795,114 @@ const Exam = (() => {
     stopHiddenVideoTrick();
   }
 
-  function onVisibility(){ if (S.active && document.hidden) notifyEvent('hidden'); }
+  // === Zámek při porušení pravidel (odchod z aplikace) ===
+  let lockOverlay = null;
+  function showLock(msg){
+    if (!lockOverlay){
+      lockOverlay = document.createElement('div');
+      lockOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:18px';
+      const box = document.createElement('div');
+      box.style.cssText = 'max-width:520px;width:100%;background:#111827;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px;color:#fff;font:600 16px/1.45 system-ui,Segoe UI,Roboto;text-align:center';
+      const h = document.createElement('div');
+      h.style.cssText = 'font-size:20px;font-weight:900;margin-bottom:10px';
+      h.textContent = 'Testový mód zablokován';
+      const p = document.createElement('div');
+      p.style.cssText = 'opacity:.92;margin-bottom:14px';
+      p.textContent = msg || 'Opustil jsi aplikaci během testu.';
+      const b = document.createElement('button');
+      b.textContent = 'OK';
+      b.style.cssText = 'background:#ef4444;color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;width:100%';
+      b.addEventListener('pointerdown', ()=>{ try{ location.reload(); }catch(_){ } }, {passive:true});
+      box.appendChild(h); box.appendChild(p); box.appendChild(b);
+      lockOverlay.appendChild(box);
+    }
+    document.body.appendChild(lockOverlay);
+  }
+
+  function markTokenLocked(reason){
+    const USED_KEY = 'bernio.exam.usedTokens.v1';
+    try{
+      const used = JSON.parse(localStorage.getItem(USED_KEY)||'{}')||{};
+      if (S.token){
+        used[S.token] = { ...(used[S.token]||{}), used:true, locked:true, lockedAt:Date.now(), lastReason:reason||'left' };
+        localStorage.setItem(USED_KEY, JSON.stringify(used));
+      }
+    }catch(_){ }
+  }
+
+  function violate(reason){
+    if (!S.active) return;
+    markTokenLocked(reason||'left');
+    notifyEvent('hidden', { reason: reason||'left' });
+    // vypnout test UI
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('offline', onOffline);
+    window.removeEventListener('online', onOnline);
+    window.removeEventListener('pagehide', onPageHide);
+    S.active = false;
+    setUIOff();
+    showLock('Opustil jsi aplikaci během testu. Testový mód se vypnul a tento QR kód už na tomto zařízení nejde použít.');
+  }
+
+  function onPageHide(){ if (S.active) violate('pagehide'); }
+
+  function onVisibility(){ if (S.active && document.hidden) violate('hidden'); }
   function onOffline(){ if (S.active && !navigator.onLine) notifyEvent('offline'); }
   function onOnline(){ /* případně: if (S.active) notifyEvent('online'); */ }
 
-  async function start(code){
+  async function start(payload){
     if (S.active) return;
     if (!navigator.onLine){ alert('Pro start musíš být online.'); return; }
-    let ident = (window.prompt && window.prompt('Zadej svůj IDENTIFIKÁTOR:')) || '';
+
+    // payload může být jen string kódu (zpětná kompatibilita)
+    const P = (payload && typeof payload === 'object') ? payload : { code: payload };
+    const normCode = String(P.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);
+    if (normCode.length !== 3){ alert('Neplatný kód testu.'); return; }
+
+    // Časové okno (lokální čas v ms)
+    const now = Date.now();
+    const fromTs = +P.fromTs || 0;
+    const toTs   = +P.toTs   || 0;
+    if (fromTs && now < fromTs){
+      alert('Testový mód ještě není aktivní.');
+      return;
+    }
+    if (toTs && now > toTs){
+      alert('Platnost QR kódu už skončila.');
+      return;
+    }
+
+    // Jednorázový token (z QR). Když chybí, použijeme den+kód.
+    const day = String(P.day || '').trim();
+    const token = String(P.token || (day ? (day+'|'+normCode) : ('|'+normCode))).trim();
+
+    // Lokální ochrana proti opětovnému použití stejného QR (stejný token)
+    const USED_KEY = 'bernio.exam.usedTokens.v1';
+    function loadUsed(){
+      try{ return JSON.parse(localStorage.getItem(USED_KEY)||'{}')||{}; }catch(_){ return {}; }
+    }
+    function saveUsed(obj){
+      try{ localStorage.setItem(USED_KEY, JSON.stringify(obj||{})); }catch(_){ }
+    }
+
+    const used = loadUsed();
+    const rec = used[token];
+    if (rec && (rec.locked || rec.used)){
+      alert('Tenhle QR kód už byl na tomto zařízení použit a nejde spustit znovu.');
+      return;
+    }
+
+    // Identifikátor (přezdívka)
+    let ident = (window.prompt && window.prompt('Zadej svou přezdívku:')) || '';
     ident = String(ident||'').trim();
-    if (!ident){ alert('Bez identifikátoru nelze pokračovat.'); return; }
+    if (!ident){ alert('Bez přezdívky nelze pokračovat.'); return; }
+
+    // připoj se do roomu (server potřebuje jen code+ident; token posíláme navíc, když by se hodil)
     try{
       const resp = await fetch(API('api/join'), {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ code: String(code||'').toUpperCase().slice(0,3), ident })
+        body: JSON.stringify({ code: normCode, ident, token, day, fromTs, toTs })
       });
       const text = await resp.text();
       const data = text ? JSON.parse(text) : null;
@@ -820,15 +913,26 @@ const Exam = (() => {
       alert('Nelze se připojit k testu.\n' + String(e.message||e));
       return;
     }
+
+    // označ token jako použitý
+    used[token] = { used:true, locked:false, day: day||null, code: normCode, usedAt: Date.now() };
+    saveUsed(used);
+
+    // uložíme si token pro případ porušení pravidel
+    S.token = token;
+
     S.active = true;
     S.startAt = Date.now();
-    const norm = String(code||'').toUpperCase().slice(0,3);
-    setUIOn(norm);
+    setUIOn(normCode);
+
+    // Při opuštění aplikace -> porušení pravidel
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('offline', onOffline);
     window.addEventListener('online', onOnline);
+    window.addEventListener('pagehide', onPageHide);
+
     state.resultShown = true;
-    state.resultStr = 'Test mód aktivní.';
+    state.resultStr = 'Testový mód aktivní.';
     render();
   }
   function finish(){
@@ -836,9 +940,11 @@ const Exam = (() => {
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('offline', onOffline);
     window.removeEventListener('online', onOnline);
+    window.removeEventListener('pagehide', onPageHide);
     S.active = false;
     S.pid = null;
     S.startAt = 0;
+    S.token = null;
     setUIOff();
     state.resultShown = true;
     state.resultStr = 'Zkouška ukončena.';
@@ -1539,7 +1645,23 @@ function moveCursor(step){
   render();
 }
 
+// === Tajný vstup do testového módu: 5× AC ===
+let __acTapCount = 0;
+let __acTapLast  = 0;
+function __trackACTap(){
+  if (Exam && Exam.state && Exam.state.active) return;
+  const now = Date.now();
+  if (now - __acTapLast > 1500) __acTapCount = 0;
+  __acTapLast = now;
+  __acTapCount++;
+  if (__acTapCount >= 5){
+    __acTapCount = 0;
+    try{ startExamScan(); }catch(_){ }
+  }
+}
+
 function ac(hard=false){
+  __trackACTap();
   state.raw=''; state.cursor=0; if(hard){ state.ans=0; }
   state.resultShown=false; state.resultStr=''; state.lastRes=null;
   state.editAfterResult=false; document.getElementById('exprWrap').scrollLeft=0;
@@ -3242,7 +3364,7 @@ async function restartLiveScan(noteText) {
   function deliver(text){
     const inner = parseExamPayload(text) || {};
     stop();
-   if ((inner.type || 'START').toUpperCase() === 'START') Exam.start(inner.code);
+   if ((inner.type || 'START').toUpperCase() === 'START') Exam.start(inner);
   else Exam.finish();
   }
 function rotateCanvas(srcCanvas, deg){
