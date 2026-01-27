@@ -3335,6 +3335,28 @@ window.addEventListener('keydown', (e) => {
       return window.ZXing;
     }
   }
+function waitVideoReady(v, timeoutMs=2500){
+  if (!v) return Promise.resolve();
+  if (v.readyState >= 2 && v.videoWidth > 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      v.removeEventListener('loadedmetadata', onReady);
+      v.removeEventListener('loadeddata', onReady);
+      v.removeEventListener('canplay', onReady);
+      clearTimeout(t);
+      resolve();
+    };
+    const onReady = () => cleanup();
+    v.addEventListener('loadedmetadata', onReady, { once:true });
+    v.addEventListener('loadeddata', onReady, { once:true });
+    v.addEventListener('canplay', onReady, { once:true });
+    const t = setTimeout(cleanup, timeoutMs);
+  });
+}
+
 async function restartLiveScan(noteText) {
   if (note && noteText) note.textContent = noteText;
 
@@ -3355,8 +3377,9 @@ async function restartLiveScan(noteText) {
   currentStream = stream;
   video.srcObject = stream;
   try { await video.play(); } catch {}
+  await waitVideoReady(video);
 
-  // Rovnou startni ZXing (na iOS spolehlivější)
+  // Rovnou startni ZXing
   await startZXing();
 }
 
@@ -3461,25 +3484,37 @@ async function start(kind){ // 'START' | 'END'
 async function startZXing(){
   await ensureFallback();
   try {
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    // Na některých Android telefonech (např. Samsung) může MultiFormatReader zlobit,
+    // proto používáme přímo QR reader a čteme z existujícího <video>.
+    const reader = new ZXing.BrowserQRCodeReader(undefined, {
+      delayBetweenScanAttempts: 80,
+      delayBetweenScanSuccess: 250
+    });
 
-    const reader = new ZXing.BrowserMultiFormatReader(hints);
     stopReader = () => { try { reader.reset(); } catch {} };
 
+    // Jestli je v knihovně dostupné čtení ze streamu, použij ho (nejméně problémů s kamerou)
+    if (typeof reader.decodeFromStream === 'function' && currentStream) {
+      reader.decodeFromStream(currentStream, video, (res /*, err*/) => {
+        if (!running) return;
+        if (res) {
+          const text = res.getText && res.getText();
+          if (text) deliver(text);
+        }
+      });
+      return;
+    }
+
+    // fallback: čti z video elementu (nevytváří další getUserMedia)
     reader.decodeFromVideoElementContinuously(video, (res /*, err*/) => {
       if (!running) return;
       if (res) {
         const text = res.getText && res.getText();
-        if (text) {
-          // pokud máš helper maybeDeliver, klidně volej ten:
-          // maybeDeliver(text);
-          deliver(text);
-        }
+        if (text) deliver(text);
       }
     });
-  } catch {
+  } catch (e) {
+    console.warn('ZXing init failed', e);
     if (note) note.textContent = 'Čtečku se nepodařilo inicializovat.';
   }
 }
