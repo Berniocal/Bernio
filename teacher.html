@@ -273,63 +273,83 @@ async function refreshUsed(){
 
 async function generate(){
   const code = normalizeCode(codeEl.value);
-  const fromEl = document.getElementById('from');
-  const toEl   = document.getElementById('to');
-  const fromVal = fromEl ? fromEl.value : '';
-  const toVal   = toEl ? toEl.value : '';
+  const fromVal = document.getElementById('from')?.value || '';
+  const toVal   = document.getElementById('to')?.value || '';
 
-  if (code.length !== 3) { showToast('Zadej přesně 3 alfanumerické znaky (např. A7K).','err'); return; }
+  if (code.length !== 3) { showToast('Zadej přesně 3 znaky.','err'); return; }
   if (!fromVal || !toVal) { showToast('Vyplň od–do (datum i čas).','err'); return; }
 
-  const fromTs = new Date(fromVal).getTime();
-  const toTs   = new Date(toVal).getTime();
-  if (!isFinite(fromTs) || !isFinite(toTs)) { showToast('Neplatné datum/čas.','err'); return; }
-  if (toTs <= fromTs) { showToast('Čas DO musí být po čase OD.','err'); return; }
-  if ((toTs - fromTs) > MAX_WINDOW_MS) { showToast('Platnost QR může být maximálně 5 minut.','err'); return; }
+  const fromTsMs = new Date(fromVal).getTime();
+  const toTsMs   = new Date(toVal).getTime();
 
-  const dayFrom = toLocalDayStr(fromTs);
-  const dayTo   = toLocalDayStr(toTs);
+  if (!isFinite(fromTsMs) || !isFinite(toTsMs)) { showToast('Neplatné datum/čas.','err'); return; }
+  if (toTsMs <= fromTsMs) { showToast('Čas DO musí být po čase OD.','err'); return; }
+  if ((toTsMs - fromTsMs) > MAX_WINDOW_MS) { showToast('Platnost max 5 minut.','err'); return; }
+
+  const dayFrom = toLocalDayStr(fromTsMs);
+  const dayTo   = toLocalDayStr(toTsMs);
   if (dayFrom !== dayTo) { showToast('OD a DO musí být ve stejný den.','err'); return; }
 
-  // Více QR denně je ok, ale nesmí se vygenerovat stejný 3místný kód ve stejný den (v tomto prohlížeči)
+  // lokální blokace: stejný 3místný kód nesmí v ten den vzniknout 2× (v tomto prohlížeči)
   const map = loadGenerated();
   map[dayFrom] = map[dayFrom] || {};
   if (map[dayFrom][code]) {
     showToast(`Kód ${code} už byl pro den ${dayFrom} vygenerován.`, 'err');
-    // nastav aktuální kód pro roster
     currentCode = code;
     document.getElementById('curCode').textContent = currentCode;
     localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode);
+
+    // vykresli existující QR (z uložené odpovědi workeru)
+    try{
+      const wrapped = { payload: JSON.stringify(map[dayFrom][code]) };
+      await drawQR(JSON.stringify(wrapped));
+    }catch{}
+
     if (rosterTimer) clearInterval(rosterTimer);
     rosterTimer = setInterval(pollRoom, 1000);
     pollRoom();
     refreshUsed();
-    // a rovnou vykresli existující QR, aby šel znovu ukázat
-    try{ await drawQR(JSON.stringify({payload: JSON.stringify(map[dayFrom][code])})); }catch{}
     return;
   }
 
-  // vytvoř nový payload + ulož (více QR za den, ale ne stejný kód)
-  const payload = {
-    v: 1,
-    code,
-    day: dayFrom,
-    fromTs,
-    toTs,
-    token: genToken(),
-    createdAt: Date.now()
-  };
+  // ===== TADY je KLÍČ: zavolat worker /api/qr =====
+  const fromSec = Math.floor(fromTsMs / 1000);
+  const toSec   = Math.floor(toTsMs / 1000);
+  const expSec  = Math.max(1, Math.min(300, toSec - fromSec)); // max 5 minut
 
-  map[dayFrom][code] = payload;
+  let data;
+  try{
+    data = await fetchJSON(API('api/qr'), {
+      method:'POST',
+      body: JSON.stringify({
+        type: "START",
+        code,
+        day: dayFrom,       // uloží se pod zvoleným dnem
+        fromTs: fromSec,
+        toTs: toSec,
+        expSec
+      })
+    });
+  }catch(e){
+    showToast('API /api/qr selhalo: ' + String(e.message||e), 'err');
+    return;
+  }
+
+  // worker vrací inner a wrapped; QR kreslíme z wrapped.payload
+  const inner = data.inner;
+  const wrappedPayload = data.wrapped?.payload;
+  if (!inner || !wrappedPayload) { showToast('Špatná odpověď z /api/qr','err'); return; }
+
+  // uložíme si payload lokálně (kvůli přehledu "vygenerované QR" a reloadu)
+  map[dayFrom][code] = inner;      // <— ukládám inner (už obsahuje fromTs/toTs)
   map[dayFrom]._last = code;
   saveGenerated(map);
 
   currentCode = code;
   document.getElementById('curCode').textContent = currentCode;
-  try{ localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode); }catch(_){ }
+  localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode);
 
-  const wrapped = { payload: JSON.stringify(payload) };
-  await drawQR(JSON.stringify(wrapped));
+  await drawQR(JSON.stringify({ payload: wrappedPayload }));
   await refreshUsed();
 
   showToast(`${code} • aktivní ${dayFrom} ${fromVal.slice(11)}–${toVal.slice(11)}`, 'ok');
@@ -338,6 +358,7 @@ async function generate(){
   rosterTimer = setInterval(pollRoom, 1000);
   pollRoom();
 }
+
 
 /* dráty */
 codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
