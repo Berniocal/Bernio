@@ -1,6 +1,6 @@
 // === Bernio SW – 1 listener, scope-safe cesty ===
-const CACHE_STATIC  = 'calc-static-v54';
-const CACHE_RUNTIME = 'calc-runtime-v54';
+const CACHE_STATIC  = 'calc-static-v55';
+const CACHE_RUNTIME = 'calc-runtime-v55';
 
 // Odvoď base-path ze scope (např. "/Bernio/")
 const BASE = new URL(self.registration.scope).pathname.replace(/\/+$/, '/') ;
@@ -89,6 +89,7 @@ self.addEventListener('fetch', (event) => {
     })());
   }
 });
+
 
 
 
