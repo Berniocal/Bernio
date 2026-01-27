@@ -142,6 +142,7 @@ const API_BASE = "https://examqr.jendabernard.workers.dev";
 
 const TEACHER_GEN_KEY = 'bernio.teacher.generated.v1';
 const TEACHER_LAST_CODE_KEY = "bern_teacher_last_code_v1";
+const MAX_WINDOW_MS = 5 * 60 * 1000; // max 5 minut
 
 function loadGenerated(){
   try{ return JSON.parse(localStorage.getItem(TEACHER_GEN_KEY) || '{}') || {}; }catch(_){ return {}; }
@@ -257,7 +258,11 @@ async function refreshUsed(){
   const day = map[today];
   if (!day || typeof day !== 'object') { usedEl.textContent = '—'; return; }
 
-  const items = Object.values(day).filter(Boolean);
+  // day je mapa { CODE: payload, _last: "ABC" }
+  const items = Object.keys(day)
+    .filter(k => k !== '_last')
+    .map(k => day[k])
+    .filter(p => p && typeof p === 'object' && p.code);
   if (!items.length) { usedEl.textContent = '—'; return; }
 
   const fmt = (ts)=>{ const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
@@ -280,6 +285,7 @@ async function generate(){
   const toTs   = new Date(toVal).getTime();
   if (!isFinite(fromTs) || !isFinite(toTs)) { showToast('Neplatné datum/čas.','err'); return; }
   if (toTs <= fromTs) { showToast('Čas DO musí být po čase OD.','err'); return; }
+  if ((toTs - fromTs) > MAX_WINDOW_MS) { showToast('Platnost QR může být maximálně 5 minut.','err'); return; }
 
   const dayFrom = toLocalDayStr(fromTs);
   const dayTo   = toLocalDayStr(toTs);
@@ -303,7 +309,29 @@ async function generate(){
     return;
   }
 
+  // vytvoř nový payload + ulož (více QR za den, ale ne stejný kód)
+  const payload = {
+    v: 1,
+    code,
+    day: dayFrom,
+    fromTs,
+    toTs,
+    token: genToken(),
+    createdAt: Date.now()
+  };
+
+  map[dayFrom][code] = payload;
+  map[dayFrom]._last = code;
+  saveGenerated(map);
+
+  currentCode = code;
   document.getElementById('curCode').textContent = currentCode;
+  try{ localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode); }catch(_){ }
+
+  const wrapped = { payload: JSON.stringify(payload) };
+  await drawQR(JSON.stringify(wrapped));
+  await refreshUsed();
+
   showToast(`${code} • aktivní ${dayFrom} ${fromVal.slice(11)}–${toVal.slice(11)}`, 'ok');
 
   if (rosterTimer) clearInterval(rosterTimer);
@@ -328,15 +356,21 @@ genBtn.addEventListener('click', generate);
   const toEl=document.getElementById('to');
   if (fromEl && !fromEl.value) fromEl.value = toDTLocal(now);
   if (toEl && !toEl.value){
-    const t = new Date(now.getTime()+45*60000);
+    const t = new Date(now.getTime()+5*60000);
     toEl.value = toDTLocal(t);
   }
 
-  // když už dnes existuje QR, obnov ho (aby šel po reloadu znovu ukázat)
+  // když už dnes existují QR, obnov poslední použité (aby šel po reloadu znovu ukázat)
   const map = loadGenerated();
   const today = toLocalDayStr(Date.now());
-  const p = map[today];
-  if (p){
+  const day = map[today];
+
+  let last = null;
+  try{ last = localStorage.getItem(TEACHER_LAST_CODE_KEY) || null; }catch(_){ last = null; }
+  if (!last && day && typeof day === 'object') last = day._last || null;
+
+  const p = (day && typeof day === 'object' && last && day[last]) ? day[last] : null;
+  if (p && typeof p === 'object') {
     codeEl.value = p.code;
     if (fromEl) fromEl.value = toDTLocal(new Date(p.fromTs));
     if (toEl)   toEl.value   = toDTLocal(new Date(p.toTs));
