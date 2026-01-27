@@ -900,21 +900,29 @@ const Exam = (() => {
     if (!ident){ alert('Bez přezdívky nelze pokračovat.'); return; }
 
     // Připoj se do roomu – Worker očekává přesně { code, ident } (jinak vrací "Bad input")
-    try{
-      const resp = await fetch(API('api/join'), {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ code: normCode, ident })
-      });
-      const text = await resp.text();
-      const data = text ? JSON.parse(text) : null;
-      if (!resp.ok) throw new Error((data && data.error) || `${resp.status} ${resp.statusText}`);
-      if (!data || !data.pid) throw new Error('Bad response from /api/join');
-      S.pid = data.pid;
-    }catch(e){
-      alert('Nelze se připojit k testu.\n' + String(e.message||e));
-      return;
-    }
+try{
+  const resp = await fetch(API('api/join'), {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      code: normCode,
+      name: ident,                      // <-- Worker chce "name"
+      device: navigator.userAgent.slice(0, 120)  // <-- nepovinné, ale Worker to umí
+    })
+  });
+
+  const text = await resp.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!resp.ok) throw new Error((data && data.error) || `${resp.status} ${resp.statusText}`);
+  if (!data || !data.pid) throw new Error('Bad response from /api/join');
+  S.pid = data.pid;
+
+}catch(e){
+  alert('Nelze se připojit k testu.\n' + String(e.message||e));
+  return;
+}
+}
 
     // označ token jako použitý
     used[token] = { used:true, locked:false, day: day||null, code: normCode, usedAt: Date.now() };
@@ -3540,3 +3548,4 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
