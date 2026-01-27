@@ -3325,15 +3325,15 @@ window.addEventListener('keydown', (e) => {
   }
 
   async function ensureFallback(){
-    if ('BarcodeDetector' in window) return null;
     if (window.ZXing) return window.ZXing;
-    try {
-      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="./Bernio/vendor/zxing.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
-      return window.ZXing;
-    } catch {
-      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
-      return window.ZXing;
-    }
+    // Na některých telefonech existuje BarcodeDetector, ale pro jistotu používáme ZXing (stabilnější napříč zařízeními).
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js";
+      s.onload=res; s.onerror=rej;
+      document.head.appendChild(s);
+    });
+    return window.ZXing;
   }
 function waitVideoReady(v, timeoutMs=2500){
   if (!v) return Promise.resolve();
