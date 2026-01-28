@@ -883,7 +883,7 @@ const Exam = (() => {
   function onPageHide(){ if (S.active) violate('pagehide'); }
 
   function onVisibility(){ if (S.active && document.hidden) violate('hidden'); }
-  function onOffline(){ if (S.active && !navigator.onLine) notifyEvent('offline'); }
+  function onOffline(){ if (S.active && !navigator.onLine) violate('offline'); }
   function onOnline(){ /* případně: if (S.active) notifyEvent('online'); */ }
 
   async function start(payload){
