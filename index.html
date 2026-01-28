@@ -913,11 +913,10 @@ try{
   const resp = await fetch(API('api/join'), {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify({
-      code: normCode,
-      name: ident,                      // <-- Worker chce "name"
-      device: navigator.userAgent.slice(0, 120)  // <-- nepovinné, ale Worker to umí
-    })
+body: JSON.stringify({
+  code: normCode,
+  name: ident
+})
   });
 
   const text = await resp.text();
@@ -3557,6 +3556,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
