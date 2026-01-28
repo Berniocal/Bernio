@@ -741,6 +741,41 @@ async function notifyEvent(type, extra = {}) {
   } catch (_) {}
 }
 
+
+// ===== Heartbeat (GDPR-safe) =====
+// Odesílá jen: {code, pid, visible, online, locked, reason?}. Žádné device, userAgent, IP atd. (to už je mimo JS).
+let __beatTimer = null;
+
+async function sendBeat(reason = null){
+  try{
+    if (!state.examCode || !Exam.state.pid) return;
+    const payload = {
+      code: state.examCode,
+      pid: Exam.state.pid,
+      visible: !document.hidden,
+      online: !!navigator.onLine,
+      locked: false
+    };
+    if (reason) payload.reason = reason;
+    await fetch(API('api/beat'), {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+  }catch(_){}
+}
+
+function startBeat(){
+  stopBeat();
+  __beatTimer = setInterval(()=>{ sendBeat(); }, 1000);
+  sendBeat();
+}
+
+function stopBeat(){
+  if (__beatTimer){ clearInterval(__beatTimer); __beatTimer = null; }
+}
+
+
 // iOS/SAFARI: skryté (1×1) video pro udržení displeje/medií „v chodu“
 let __hiddenVideo = null;
 function startHiddenVideoTrick() {
@@ -832,6 +867,7 @@ const Exam = (() => {
 
   function violate(reason){
     if (!S.active) return;
+    stopBeat();
     markTokenLocked(reason||'left');
     notifyEvent('hidden', { reason: reason||'left' });
     // vypnout test UI
@@ -925,6 +961,8 @@ body: JSON.stringify({
   if (!resp.ok) throw new Error((data && data.error) || `${resp.status} ${resp.statusText}`);
   if (!data || !data.pid) throw new Error('Bad response from /api/join');
   S.pid = data.pid;
+  // spustit heartbeat (1×/s)
+  startBeat();
 
 }catch(e){
   alert('Nelze se připojit k testu.\n' + String(e.message||e));
