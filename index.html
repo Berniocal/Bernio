@@ -919,6 +919,9 @@ const Exam = (() => {
     window.removeEventListener('offline', onOffline);
     window.removeEventListener('online', onOnline);
     window.removeEventListener('pagehide', onPageHide);
+    window.removeEventListener('resize', onViewportEvent);
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', onViewportEvent);
+    document.removeEventListener('fullscreenchange', onViewportEvent);
     S.active = false;
     setUIOff();
     showLock('Opustil jsi aplikaci během testu. Testový mód se vypnul a tento QR kód už na tomto zařízení nejde použít.');
@@ -929,6 +932,48 @@ const Exam = (() => {
   function onVisibility(){ if (S.active && document.hidden) violate('hidden'); }
   function onOffline(){ if (S.active && !navigator.onLine) violate('offline'); }
   function onOnline(){ /* případně: if (S.active) notifyEvent('online'); */ }
+
+
+  // ===== Anti-overlay / split-screen monitor (GDPR-safe) =====
+  // Nemůžeme zakázat pop-up/split-screen, ale můžeme to okamžitě detekovat a ukončit testový mód.
+  // Detekujeme změnu velikosti viewportu / visualViewportu nebo odchod z fullscreen (pokud byl).
+  const VIEW_TOL_PX = 24; // tolerance kvůli lištám; plovoucí okno / split-screen obvykle změní víc
+  let __baseW = 0, __baseH = 0, __baseVVW = 0, __baseVVH = 0, __baseFS = false;
+
+  function measureViewport(){
+    const vv = window.visualViewport;
+    return {
+      w: Math.round(window.innerWidth || 0),
+      h: Math.round(window.innerHeight || 0),
+      vvw: vv ? Math.round(vv.width || 0) : 0,
+      vvh: vv ? Math.round(vv.height || 0) : 0,
+      fs: !!document.fullscreenElement
+    };
+  }
+  function setBaselineViewport(){
+    const m = measureViewport();
+    __baseW = m.w; __baseH = m.h; __baseVVW = m.vvw; __baseVVH = m.vvh; __baseFS = m.fs;
+  }
+  function viewportChanged(){
+    const m = measureViewport();
+    const dw = Math.abs(m.w - __baseW);
+    const dh = Math.abs(m.h - __baseH);
+    const dvw = __baseVVW ? Math.abs(m.vvw - __baseVVW) : 0;
+    const dvh = __baseVVH ? Math.abs(m.vvh - __baseVVH) : 0;
+
+    // Pokud jsme začali ve fullscreen, hlídej odchod z fullscreen
+    if (__baseFS && !m.fs) return true;
+
+    // Změna rozměrů okna (split-screen/pop-up) – typicky velká změna
+    if (dw > VIEW_TOL_PX || dh > VIEW_TOL_PX) return true;
+    if (dvw > VIEW_TOL_PX || dvh > VIEW_TOL_PX) return true;
+
+    return false;
+  }
+
+  function onViewportEvent(){
+    if (S.active && viewportChanged()) violate('viewport');
+  }
 
   async function start(payload){
     if (S.active) return;
@@ -1030,6 +1075,13 @@ body: JSON.stringify({
     window.addEventListener('offline', onOffline);
     window.addEventListener('online', onOnline);
     window.addEventListener('pagehide', onPageHide);
+
+
+    // Monitor zmenšení/zvětšení okna (split-screen / plovoucí okno) => okamžitě ukončit testový mód
+    setBaselineViewport();
+    window.addEventListener('resize', onViewportEvent);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportEvent);
+    document.addEventListener('fullscreenchange', onViewportEvent);
 
     state.resultShown = true;
     state.resultStr = 'Testový mód aktivní.';
