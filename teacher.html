@@ -234,7 +234,7 @@ function renderRoster(data){
       !p.visible ? 'HIDDEN' : ''
     ].filter(Boolean).join(' · ') || 'OK';
 
-    return `• <b>${p.name}</b> (${p.device||'?'}) — od: ${since}, naposledy: ${seen} ${flag} <span style="opacity:.8">(${state}${p.violations?`, #${p.violations}`:''}${p.lastReason?`, ${p.lastReason}`:''})</span>`;
+    return `• <b>${p.name}</b> — od: ${since}, naposledy: ${seen} ${flag} <span style="opacity:.8">(${state}${p.violations?`, #${p.violations}`:''}${p.lastReason?`, ${p.lastReason}`:''})</span>`;
   });
 
   box.innerHTML = rows.join('<br>');
