@@ -7,8 +7,8 @@
 <meta name="color-scheme" content="dark light">
 <style>
   :root{
-    --bg:#0b1220; --bg2:#0d1426; --card:#0f172a; --ink:#e5edff; --ink-muted:#9db0d3;
-    --edge:#1e293b; --brand:#3b82f6; --brand-2:#60a5fa; --ok:#10b981; --err:#ef4444;
+    --bg:#0b1220; --card:#0f172a; --ink:#e5edff; --ink-muted:#9db0d3;
+    --edge:#1e293b; --brand:#3b82f6; --brand-2:#60a5fa; --err:#ef4444;
   }
   *{box-sizing:border-box}
   body{
@@ -27,12 +27,9 @@
   }
   h1{margin:0 0 18px;font-weight:800;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
   h1::after{content:"";width:10px;height:10px;border-radius:999px;background:#38bdf8;box-shadow:0 0 18px #38bdf8}
-
-  /* ovládací řádek */
   .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
   label{color:var(--ink-muted);font-size:14px}
 
-  /* bílé vstupy pro učitele */
   .input-white{
     background:#ffffff !important;
     color:#111827 !important;
@@ -41,28 +38,24 @@
   }
   #code{min-width:220px;text-transform:uppercase}
 
-  /* tlačítko generovat */
   .btn{
     padding:12px 16px;
     background:linear-gradient(180deg,var(--brand),var(--brand-2));
     color:#06101f;border:none;border-radius:10px;font-weight:800;
     cursor:pointer; box-shadow:0 6px 24px rgba(59,130,246,.35)
   }
-
-  /* tlačítko bude na samostatném řádku a uprostřed */
   .row #gen{
     display:block;
-    margin:12px auto 0;   /* auto = vycentrovat */
-    flex-basis:100%;      /* zalom na novou řádku v rámci .row */
+    margin:12px auto 0;
+    flex-basis:100%;
     width:100%;
   }
 
-  /* QR blok vycentrovaný */
   .qr-wrap{
     margin:26px auto 18px;
     display:block;
     max-width:min(90vw, 480px);
-    background:#ffffff;          /* bílé okolí pro tichou zónu QR */
+    background:#ffffff;
     border-radius:12px;
     padding:10px;
     border:1px solid #e5e7eb;
@@ -73,7 +66,6 @@
     background:#ffffff; border-radius:6px;
   }
 
-  /* seznam použitých kódů */
   .used-block{
     margin-top:20px;
     background:#0b1426;border:1px solid var(--edge);
@@ -94,7 +86,6 @@
   <div class="card">
     <h1>Teacher QR generator</h1>
 
-    <!-- ovládání -->
     <div class="row">
       <div>
         <label for="code">Kód (3 znaky)</label><br>
@@ -114,7 +105,6 @@
       <button id="gen" class="btn">Generovat QR</button>
     </div>
 
-    <!-- vycentrovaný QR -->
     <div class="qr-wrap">
       <canvas id="qrcanvas" width="420" height="420"></canvas>
     </div>
@@ -124,9 +114,8 @@
       <div id="roster" class="list">—</div>
     </div>
 
-    <!-- seznam použitých pod QR -->
     <div class="used-block">
-      <div class="hint">Vygenerované QR (jednou na den):</div>
+      <div class="hint">Vygenerované QR (v ten den nelze znovu stejný 3místný kód):</div>
       <div id="used" class="list">—</div>
     </div>
   </div>
@@ -134,15 +123,28 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<!-- QR knihovna -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script>
-/* ==== nastav si BASE URL workeru (bez koncového /) ==== */
+/* ==== nastav BASE URL workeru (bez koncového /) ==== */
 const API_BASE = "https://examqr.jendabernard.workers.dev";
 
-const TEACHER_GEN_KEY = 'bernio.teacher.generated.v1';
-const TEACHER_LAST_CODE_KEY = "bern_teacher_last_code_v1";
-const MAX_WINDOW_MS = 5 * 60 * 1000; // max 5 minut
+/* Local storage: jen evidence vygenerovaných kódů (aby učitel omylem nevygeneroval 2× stejný kód v ten den v tom prohlížeči) */
+const TEACHER_GEN_KEY = 'bernio.teacher.generated.v2';
+const TEACHER_LAST_CODE_KEY = "bern_teacher_last_code_v2";
+const MAX_WINDOW_MS = 5 * 60 * 1000;
+
+const $ = (id)=>document.getElementById(id);
+const codeEl=$('code'), genBtn=$('gen'), usedEl=$('used'), qrCanvas=$('qrcanvas'), toastEl=$('toast');
+
+function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
+function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
+
+function showToast(msg, kind='ok'){
+  toastEl.textContent = msg;
+  toastEl.className = 'toast '+kind;
+  toastEl.style.display='block';
+  setTimeout(()=>toastEl.style.display='none', 2600);
+}
 
 function loadGenerated(){
   try{ return JSON.parse(localStorage.getItem(TEACHER_GEN_KEY) || '{}') || {}; }catch(_){ return {}; }
@@ -150,6 +152,7 @@ function loadGenerated(){
 function saveGenerated(map){
   try{ localStorage.setItem(TEACHER_GEN_KEY, JSON.stringify(map||{})); }catch(_){ }
 }
+
 function toLocalDayStr(ms){
   const d=new Date(ms);
   const y=d.getFullYear();
@@ -157,33 +160,20 @@ function toLocalDayStr(ms){
   const da=String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${da}`;
 }
-function genToken(){
-  const a=new Uint8Array(9);
-  (crypto.getRandomValues ? crypto.getRandomValues(a) : a.fill(Math.floor(Math.random()*256)));
-  return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
 
-
-/* ===== pomocné ===== */
-const $ = (id)=>document.getElementById(id);
-const codeEl=$('code'), genBtn=$('gen'), usedEl=$('used'), qrCanvas=$('qrcanvas'), toastEl=$('toast');
-
-function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
-function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
-function showToast(msg, kind='ok'){
-  toastEl.textContent = msg; toastEl.className = 'toast '+kind;
-  toastEl.style.display='block'; setTimeout(()=>toastEl.style.display='none', 2400);
-}
-
-/* CORS-safe fetch */
 async function fetchJSON(url, init={}) {
   const opts = { mode:'cors', cache:'no-store', ...init };
   if (opts.method && opts.method!=='GET' && opts.method!=='HEAD') {
     opts.headers = { ...(opts.headers||{}), 'Content-Type':'application/json' };
   }
   const res = await fetch(url, opts);
-  const txt = await res.text(); let data=null; try{ data = txt?JSON.parse(txt):null; }catch{ data={raw:txt}; }
-  if(!res.ok) throw new Error((data&&data.error)||(`${res.status} ${res.statusText}`));
+  const txt = await res.text();
+  let data=null;
+  try{ data = txt?JSON.parse(txt):null; }catch{ data={raw:txt}; }
+  if(!res.ok){
+    const err = (data && (data.error + (data.detail ? (' — '+data.detail) : ''))) || `${res.status} ${res.statusText}`;
+    throw new Error(err);
+  }
   return data;
 }
 
@@ -196,115 +186,137 @@ function drawQR(text){
   });
 }
 
-let currentCode = null;
-let rosterTimer = 0;
-
 function formatAgo(sec){
   if (sec < 60) return `${sec|0}s`;
   const m = (sec/60)|0, s = sec % 60 | 0;
   return `${m}m ${s}s`;
 }
 
+/* ===== GDPR režim: zobrazuj pouze přezdívku a porušení na základě EXPLICITNÍ změny stavu ===== */
 function renderRoster(data){
-  const cur = document.getElementById('curCode');
-  const box = document.getElementById('roster');
-  cur.textContent = data.code || '—';
+  const cur = $('curCode');
+  const box = $('roster');
 
+  cur.textContent = data.code || '—';
   const list = data.participants || [];
   if (!list.length){ box.innerHTML = '—'; return; }
 
   const now = Math.floor(Date.now()/1000);
+
   const rows = list.map(p => {
-    const since = formatAgo(now - (p.since || now));
-    const age   = now - (p.lastSeen || now);
-    const seen  = formatAgo(age);
+    const sinceAgo = formatAgo(now - (p.since || now));
+    const age = now - (p.lastSeen || now);
+    const seenAgo  = formatAgo(age);
 
-    const offlineByAge = age > 3;
-    const isOnline = p.online && !offlineByAge;
+    const reason = String(p.lastReason || '').toLowerCase();
 
-    const violated = (!p.visible) || (String(p.lastReason||'') === 'hidden') || ((p.violations||0) > 0);
+    // Porušení JE POUZE explicitní stav z klienta:
+    // - visible=false (hidden/pagehide)
+    // - online=false (offline)
+    // - locked=true
+    // - violations>0
+    // - lastReason v {hidden, pagehide, offline}
+    const violated =
+      !!p.locked ||
+      (p.visible === false) ||
+      (p.online === false) ||
+      ((p.violations||0) > 0) ||
+      (reason === 'hidden' || reason === 'pagehide' || reason === 'offline');
 
-    const flag  = (p.locked ? '🔒'
-                  : (violated ? '<span style="color:var(--err);font-weight:900">✖</span>'
-                  : (!isOnline ? '📴'
-                  : '✅')));
-    const state = [
-      p.locked ? 'LOCKED' : '',
-      !isOnline ? `OFFLINE${offlineByAge ? ' (bez hlášení)' : ''}` : '',
-      !p.visible ? 'HIDDEN' : ''
-    ].filter(Boolean).join(' · ') || 'OK';
+    const flag = violated
+      ? '<span style="color:var(--err);font-weight:900">✖</span>'
+      : '✅';
 
-    return `• <b>${p.name}</b> — od: ${since}, naposledy: ${seen} ${flag} <span style="opacity:.8">(${state}${p.violations?`, #${p.violations}`:''}${p.lastReason?`, ${p.lastReason}`:''})</span>`;
+    const stateBits = [];
+    if (p.locked) stateBits.push('LOCKED');
+    if (p.visible === false) stateBits.push('HIDDEN');
+    if (p.online === false) stateBits.push('OFFLINE');
+    if (reason) stateBits.push(reason.toUpperCase());
+    const state = stateBits.join(' · ') || 'OK';
+
+    return `• <b>${escapeHtml(p.name||'')}</b> — od: ${sinceAgo}, naposledy: ${seenAgo} ${flag} <span style="opacity:.8">(${state}${p.violations?`, #${p.violations}`:''})</span>`;
   });
 
   box.innerHTML = rows.join('<br>');
 }
 
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+let currentCode = null;
+let rosterTimer = 0;
+
 async function pollRoom(){
   if (!currentCode) return;
   try{
-    const res = await fetch(`${API_BASE.replace(/\/+$/,'')}/api/room/${currentCode}?t=${Date.now()}`, { cache:'no-store' });
+    const res = await fetch(`${API('api/room')}/${currentCode}?t=${Date.now()}`, { cache:'no-store' });
     const data = await res.json();
+    // data může být error, ale i tak renderRoster čeká ok strukturu; ošetříme:
+    if (!data || data.ok === false) return;
     renderRoster(data);
-  }catch(e){
-    // ignoruj, zkusíme za 1s znovu
+  }catch(_){
+    // ignorujeme, další poll za 1s
   }
 }
 
-/* API akce */
+/* ===== Seznam vygenerovaných (lokálně) ===== */
 async function refreshUsed(){
   const map = loadGenerated();
   const today = toLocalDayStr(Date.now());
-  const day = map[today];
-  if (!day || typeof day !== 'object') { usedEl.textContent = '—'; return; }
+  const dayMap = map[today];
+  if (!dayMap || typeof dayMap !== 'object') { usedEl.textContent = '—'; return; }
 
-  // day je mapa { CODE: payload, _last: "ABC" }
-  const items = Object.keys(day)
+  const items = Object.keys(dayMap)
     .filter(k => k !== '_last')
-    .map(k => day[k])
+    .map(k => dayMap[k])
     .filter(p => p && typeof p === 'object' && p.code);
+
   if (!items.length) { usedEl.textContent = '—'; return; }
 
-  const fmt = (ts)=>{ const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
-  // seřaď podle startu
+  const fmt = (sec)=> {
+    const d=new Date(Number(sec)*1000);
+    return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  };
+
   items.sort((a,b)=>(a.fromTs||0)-(b.fromTs||0));
   usedEl.textContent = items.map(p=> `${p.code} ${fmt(p.fromTs)}–${fmt(p.toTs)}`).join(' , ');
 }
 
+/* ===== Generování QR přes Worker /api/qr ===== */
 async function generate(){
   const code = normalizeCode(codeEl.value);
-  const fromVal = document.getElementById('from')?.value || '';
-  const toVal   = document.getElementById('to')?.value || '';
+  const fromVal = $('from')?.value || '';
+  const toVal   = $('to')?.value || '';
 
-  if (code.length !== 3) { showToast('Zadej přesně 3 znaky.','err'); return; }
+  if (code.length !== 3) { showToast('Zadej přesně 3 alfanumerické znaky (např. A7K).','err'); return; }
   if (!fromVal || !toVal) { showToast('Vyplň od–do (datum i čas).','err'); return; }
 
-  const fromTsMs = new Date(fromVal).getTime();
-  const toTsMs   = new Date(toVal).getTime();
+  const fromMs = new Date(fromVal).getTime();
+  const toMs   = new Date(toVal).getTime();
+  if (!isFinite(fromMs) || !isFinite(toMs)) { showToast('Neplatné datum/čas.','err'); return; }
+  if (toMs <= fromMs) { showToast('Čas DO musí být po čase OD.','err'); return; }
+  if ((toMs - fromMs) > MAX_WINDOW_MS) { showToast('Platnost QR může být maximálně 5 minut.','err'); return; }
 
-  if (!isFinite(fromTsMs) || !isFinite(toTsMs)) { showToast('Neplatné datum/čas.','err'); return; }
-  if (toTsMs <= fromTsMs) { showToast('Čas DO musí být po čase OD.','err'); return; }
-  if ((toTsMs - fromTsMs) > MAX_WINDOW_MS) { showToast('Platnost max 5 minut.','err'); return; }
-
-  const dayFrom = toLocalDayStr(fromTsMs);
-  const dayTo   = toLocalDayStr(toTsMs);
+  const dayFrom = toLocalDayStr(fromMs);
+  const dayTo   = toLocalDayStr(toMs);
   if (dayFrom !== dayTo) { showToast('OD a DO musí být ve stejný den.','err'); return; }
 
-  // lokální blokace: stejný 3místný kód nesmí v ten den vzniknout 2× (v tomto prohlížeči)
+  // Lokální blokace: stejný 3místný kód nesmí být v ten den vygenerovaný 2× (v tomhle prohlížeči)
   const map = loadGenerated();
   map[dayFrom] = map[dayFrom] || {};
   if (map[dayFrom][code]) {
     showToast(`Kód ${code} už byl pro den ${dayFrom} vygenerován.`, 'err');
-    currentCode = code;
-    document.getElementById('curCode').textContent = currentCode;
-    localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode);
 
-    // vykresli existující QR (z uložené odpovědi workeru)
+    // zobraz uložený QR z inner
     try{
-      const wrapped = { payload: JSON.stringify(map[dayFrom][code]) };
-      await drawQR(JSON.stringify(wrapped));
+      const inner = map[dayFrom][code];
+      await drawQR(JSON.stringify({ payload: JSON.stringify(inner) }));
     }catch{}
 
+    currentCode = code;
+    $('curCode').textContent = currentCode;
+    try{ localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode); }catch(_){}
     if (rosterTimer) clearInterval(rosterTimer);
     rosterTimer = setInterval(pollRoom, 1000);
     pollRoom();
@@ -312,10 +324,10 @@ async function generate(){
     return;
   }
 
-  // ===== TADY je KLÍČ: zavolat worker /api/qr =====
-  const fromSec = Math.floor(fromTsMs / 1000);
-  const toSec   = Math.floor(toTsMs / 1000);
-  const expSec  = Math.max(1, Math.min(300, toSec - fromSec)); // max 5 minut
+  // posíláme okno v sekundách
+  const fromSec = Math.floor(fromMs / 1000);
+  const toSec   = Math.floor(toMs / 1000);
+  const expSec  = Math.max(1, Math.min(300, toSec - fromSec));
 
   let data;
   try{
@@ -324,7 +336,7 @@ async function generate(){
       body: JSON.stringify({
         type: "START",
         code,
-        day: dayFrom,       // uloží se pod zvoleným dnem
+        day: dayFrom,
         fromTs: fromSec,
         toTs: toSec,
         expSec
@@ -335,21 +347,20 @@ async function generate(){
     return;
   }
 
-  // worker vrací inner a wrapped; QR kreslíme z wrapped.payload
   const inner = data.inner;
-  const wrappedPayload = data.wrapped?.payload;
-  if (!inner || !wrappedPayload) { showToast('Špatná odpověď z /api/qr','err'); return; }
+  if (!inner || !inner.code) { showToast('Špatná odpověď z /api/qr','err'); return; }
 
-  // uložíme si payload lokálně (kvůli přehledu "vygenerované QR" a reloadu)
-  map[dayFrom][code] = inner;      // <— ukládám inner (už obsahuje fromTs/toTs)
+  // ulož pro přehled a reload (jen kódy+okno)
+  map[dayFrom][code] = inner;
   map[dayFrom]._last = code;
   saveGenerated(map);
 
   currentCode = code;
-  document.getElementById('curCode').textContent = currentCode;
-  localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode);
+  $('curCode').textContent = currentCode;
+  try{ localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode); }catch(_){}
 
-  await drawQR(JSON.stringify({ payload: wrappedPayload }));
+  // QR vždy obsahuje {payload:"...json..."}
+  await drawQR(JSON.stringify({ payload: JSON.stringify(inner) }));
   await refreshUsed();
 
   showToast(`${code} • aktivní ${dayFrom} ${fromVal.slice(11)}–${toVal.slice(11)}`, 'ok');
@@ -359,46 +370,43 @@ async function generate(){
   pollRoom();
 }
 
-
-/* dráty */
+/* ===== Wiring ===== */
 codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
 genBtn.addEventListener('click', generate);
 ['keyup','change'].forEach(ev=>{
   codeEl.addEventListener(ev, e=>{ if(e.key==='Enter') genBtn.click(); });
 });
 
-/* init */
-(function restoreToday(){
-  // předvyplň datum/čas (zaokrouhlené na minuty)
+/* ===== Init ===== */
+(function initDefaults(){
   const now = new Date();
   const pad=(n)=>String(n).padStart(2,'0');
   const toDTLocal=(d)=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  const fromEl=document.getElementById('from');
-  const toEl=document.getElementById('to');
-  if (fromEl && !fromEl.value) fromEl.value = toDTLocal(now);
-  if (toEl && !toEl.value){
+
+  if ($('from') && !$('from').value) $('from').value = toDTLocal(now);
+  if ($('to') && !$('to').value){
     const t = new Date(now.getTime()+5*60000);
-    toEl.value = toDTLocal(t);
+    $('to').value = toDTLocal(t);
   }
 
-  // když už dnes existují QR, obnov poslední použité (aby šel po reloadu znovu ukázat)
+  // obnov poslední použitý dnešní kód (jen pro pohodlí učitele)
   const map = loadGenerated();
   const today = toLocalDayStr(Date.now());
-  const day = map[today];
-
+  const dayMap = map[today];
   let last = null;
   try{ last = localStorage.getItem(TEACHER_LAST_CODE_KEY) || null; }catch(_){ last = null; }
-  if (!last && day && typeof day === 'object') last = day._last || null;
+  if (!last && dayMap && typeof dayMap === 'object') last = dayMap._last || null;
 
-  const p = (day && typeof day === 'object' && last && day[last]) ? day[last] : null;
+  const p = (dayMap && typeof dayMap === 'object' && last && dayMap[last]) ? dayMap[last] : null;
   if (p && typeof p === 'object') {
     codeEl.value = p.code;
-    if (fromEl) fromEl.value = toDTLocal(new Date(p.fromTs));
-    if (toEl)   toEl.value   = toDTLocal(new Date(p.toTs));
-    const wrapped = { payload: JSON.stringify(p) };
-    drawQR(JSON.stringify(wrapped)).catch(()=>{});
+    $('from').value = toDTLocal(new Date(Number(p.fromTs)*1000));
+    $('to').value   = toDTLocal(new Date(Number(p.toTs)*1000));
+
+    drawQR(JSON.stringify({ payload: JSON.stringify(p) })).catch(()=>{});
     currentCode = p.code;
-    document.getElementById('curCode').textContent = currentCode;
+    $('curCode').textContent = currentCode;
+
     if (rosterTimer) clearInterval(rosterTimer);
     rosterTimer = setInterval(pollRoom, 1000);
     pollRoom();
