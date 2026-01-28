@@ -348,6 +348,19 @@ body.exam-on .calc{
 </script>
 <script>
 /* ===== drobné utily ===== */
+/* ===== kontrolní dialog před startem testu (Guided Access / Připnutí aplikace) ===== */
+async function confirmPinnedMode(){
+  // Nepokoušíme se režim detekovat (nejde spolehlivě a bylo by to zbytečně invazivní).
+  // Pouze férově vyžádáme potvrzení studenta před startem.
+  const msg =
+    "Před zahájením testu musí být zapnutý:\n\n" +
+    "• Android: Připnutí aplikace (Screen pinning)\n" +
+    "• iPhone/iPad: Asistovaný přístup (Guided Access)\n\n" +
+    "Máš tuto funkci zapnutou?";
+  return !!window.confirm(msg);
+}
+
+
 const qs=s=>document.querySelector(s);
 function onPD(el, fn){ if(!el) return; el.addEventListener('pointerdown', fn, {passive:true}); }
 function onPDAll(sel,fn){ document.querySelectorAll(sel).forEach(el=>onPD(el,()=>fn(el))); }
@@ -1032,6 +1045,13 @@ if (toMs_ && now > toMs_){
     // povolíme běžné znaky a omezíme délku (kvůli validaci ve Workeru)
     ident = ident.replace(/\s+/g,' ').replace(/[^\p{L}\p{N} _.-]/gu,'').trim().slice(0,24);
     if (!ident){ alert('Bez přezdívky nelze pokračovat.'); return; }
+
+    // Kontrolní potvrzení režimu (Android Připnutí aplikace / iOS Asistovaný přístup)
+    const pinnedOk = await confirmPinnedMode();
+    if (!pinnedOk){
+      alert('Test nelze spustit bez zapnutého Připnutí aplikace / Asistovaného přístupu.');
+      return;
+    }
 
     // Připoj se do roomu – Worker očekává přesně { code, ident } (jinak vrací "Bad input")
 try{
