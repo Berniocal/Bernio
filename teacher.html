@@ -216,12 +216,34 @@ function renderRoster(data){
     // - locked=true
     // - violations>0
     // - lastReason v {hidden, pagehide, offline}
-    const violated =
+    
+    const reason = String(p.lastReason || '').toLowerCase();
+
+    // Detekce porušení (okamžitě, i na 1 s):
+    // - explicitně z klienta: hidden/pagehide/offline
+    // - nebo serverem: locked, visible=false, online=false, violations>0
+    // - nebo chybějící heartbeat (age > 2s) = offline/odešel (přesně podle zadání)
+    const OFFLINE_SEC = 2; // přísné: jakmile na ~1–2 s zmizí, ber jako porušení
+    const offlineByAge = age > OFFLINE_SEC;
+
+    const detectedViolation =
+      offlineByAge ||
       !!p.locked ||
       (p.visible === false) ||
       (p.online === false) ||
       ((p.violations||0) > 0) ||
       (reason === 'hidden' || reason === 'pagehide' || reason === 'offline');
+
+    // Persist: jednou porušil => navždy křížek (v rámci této učitelské session)
+    const vset = loadViolations(data.day, data.code);
+    const keyName = String(p.name || '').trim();
+    const already = vset.has(keyName);
+    if (detectedViolation && keyName && !already){
+      vset.add(keyName);
+      saveViolations(data.day, data.code, vset);
+      beep1s();
+    }
+    const violated = (keyName && vset.has(keyName));
 
     const flag = violated
       ? '<span style="color:var(--err);font-weight:900">✖</span>'
@@ -244,8 +266,50 @@ function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+
 let currentCode = null;
 let rosterTimer = 0;
+
+// ===== Persistent violation memory (session) =====
+// Jakmile jednou dojde k porušení pravidel (offline/odešel/locked), u přezdívky zůstane červený křížek.
+// Ukládá se pouze přezdívka v rámci této učitelské stránky (sessionStorage), žádná data o zařízení.
+function violationStoreKey(day, code){
+  return `bernio.violations.v1.${day || 'day'}.${code || 'code'}`;
+}
+function loadViolations(day, code){
+  try{
+    const raw = sessionStorage.getItem(violationStoreKey(day, code));
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  }catch(_){ return new Set(); }
+}
+function saveViolations(day, code, set){
+  try{ sessionStorage.setItem(violationStoreKey(day, code), JSON.stringify(Array.from(set))); }catch(_){}
+}
+
+// 1s upozorňovací tón pro učitele
+let __audioCtx = null;
+function beep1s(){
+  try{
+    __audioCtx = __audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = __audioCtx;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880; // výraznější tón
+    g.gain.value = 0.0001;
+    o.connect(g); g.connect(ctx.destination);
+    const t0 = ctx.currentTime;
+    // krátký náběh, pak 1s držení, pak doběh
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.15, t0 + 0.02);
+    g.gain.setValueAtTime(0.15, t0 + 0.98);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
+    o.start(t0);
+    o.stop(t0 + 1.02);
+  }catch(_){}
+}
+
 
 async function pollRoom(){
   if (!currentCode) return;
