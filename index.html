@@ -350,15 +350,69 @@ body.exam-on .calc{
 /* ===== drobné utily ===== */
 /* ===== kontrolní dialog před startem testu (Guided Access / Připnutí aplikace) ===== */
 async function confirmPinnedMode(){
-  // Nepokoušíme se režim detekovat (nejde spolehlivě a bylo by to zbytečně invazivní).
-  // Pouze férově vyžádáme potvrzení studenta před startem.
-  const msg =
-    "Před zahájením testu musí být zapnutý:\n\n" +
-    "• Android: Připnutí aplikace (Screen pinning)\n" +
-    "• iPhone/iPad: Asistovaný přístup (Guided Access)\n\n" +
-    "Máš tuto funkci zapnutou?";
-  return !!window.confirm(msg);
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+
+    const box = document.createElement('div');
+    box.style.background = '#0f172a';
+    box.style.color = '#e5edff';
+    box.style.padding = '20px 22px';
+    box.style.borderRadius = '12px';
+    box.style.maxWidth = '420px';
+    box.style.fontFamily = 'system-ui, sans-serif';
+    box.style.boxShadow = '0 20px 50px rgba(0,0,0,.6)';
+
+    box.innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:10px">
+        Před zahájením testu
+      </div>
+      <div style="font-size:14px;line-height:1.5;margin-bottom:14px">
+        Musí být zapnutý:
+        <ul style="margin:8px 0 8px 18px">
+          <li>Android: <b>Připnutí aplikace</b></li>
+          <li>iPhone/iPad: <b>Asistovaný přístup</b></li>
+        </ul>
+        Návod najdeš
+        <a href="https://berniocal.github.io/Bernio/navod"
+           target="_blank"
+           style="color:#38bdf8;text-decoration:underline">zde</a>.
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="pin-no"
+          style="padding:8px 12px;border-radius:8px;border:none;
+                 background:#334155;color:#e5edff">
+          Nemám zapnuto
+        </button>
+        <button id="pin-yes"
+          style="padding:8px 12px;border-radius:8px;border:none;
+                 background:#22c55e;color:#022c22;font-weight:700">
+          Mám zapnuto
+        </button>
+      </div>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    box.querySelector('#pin-yes').onclick = () => {
+      overlay.remove();
+      resolve(true);
+    };
+    box.querySelector('#pin-no').onclick = () => {
+      overlay.remove();
+      resolve(false);
+    };
+  });
 }
+
+
 
 
 const qs=s=>document.querySelector(s);
@@ -3710,6 +3764,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
