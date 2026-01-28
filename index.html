@@ -778,7 +778,7 @@ function stopBeat(){
 
 // iOS/SAFARI: skryté (1×1) video pro udržení displeje/medií „v chodu“
 let __hiddenVideo = null;
-function startHiddenVideoTrick() {
+function startKeepAwake() {
   if (__hiddenVideo) return;
   const v = document.createElement('video');
   v.muted = true;
@@ -791,12 +791,56 @@ function startHiddenVideoTrick() {
   document.addEventListener('pointerdown', tryPlay, { passive: true });
   __hiddenVideo = v;
 }
-function stopHiddenVideoTrick() {
+function stopKeepAwake() {
   if (!__hiddenVideo) return;
   try { __hiddenVideo.pause(); } catch {}
   try { __hiddenVideo.remove(); } catch {}
   __hiddenVideo = null;
 }
+
+// ===== Keep screen awake (preferred: Wake Lock API; fallback: hidden 1px video) =====
+let __wakeLock = null;
+
+async function startKeepAwake() {
+  // Prefer Screen Wake Lock (Chromium/Android usually supports this)
+  try{
+    if ('wakeLock' in navigator && navigator.wakeLock && navigator.wakeLock.request) {
+      // If already held, do nothing
+      if (__wakeLock) return;
+
+      __wakeLock = await navigator.wakeLock.request('screen');
+      // When the lock is released (system / tab), clear reference
+      __wakeLock.addEventListener('release', () => { __wakeLock = null; });
+
+      // If tab becomes visible again, try to re-acquire
+      document.addEventListener('visibilitychange', async () => {
+        if (!state?.examActive) return;
+        if (document.visibilityState === 'visible' && !__wakeLock) {
+          try { __wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+        }
+      }, { once: true });
+
+      return;
+    }
+  }catch(_){
+    __wakeLock = null;
+  }
+
+  // Fallback for browsers without Wake Lock
+  startKeepAwake();
+}
+
+async function stopKeepAwake() {
+  try{
+    if (__wakeLock) {
+      const wl = __wakeLock;
+      __wakeLock = null;
+      await wl.release();
+    }
+  }catch(_){}
+  stopKeepAwake();
+}
+
 
 // Minimalistický Exam (bez senzorů, bez zvuků, jen UI + eventy)
 const Exam = (() => {
@@ -817,7 +861,7 @@ const Exam = (() => {
     if (S.timerId) clearInterval(S.timerId);
     tick();
     S.timerId = setInterval(tick, 6000);
-    startHiddenVideoTrick();
+    startKeepAwake();
   }
   function setUIOff(){
     if (S.timerId) { clearInterval(S.timerId); S.timerId = 0; }
@@ -827,7 +871,7 @@ const Exam = (() => {
     state.examCode   = '';
     updateExamUI();
     stopExamColorCycle();
-    stopHiddenVideoTrick();
+    stopKeepAwake();
   }
 
   // === Zámek při porušení pravidel (odchod z aplikace) ===
