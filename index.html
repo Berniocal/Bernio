@@ -859,18 +859,27 @@ const Exam = (() => {
     const normCode = String(P.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);
     if (normCode.length !== 3){ alert('Neplatný kód testu.'); return; }
 
-    // Časové okno (lokální čas v ms)
-    const now = Date.now();
-    const fromTs = +P.fromTs || 0;
-    const toTs   = +P.toTs   || 0;
-    if (fromTs && now < fromTs){
-      alert('Testový mód ještě není aktivní.');
-      return;
-    }
-    if (toTs && now > toTs){
-      alert('Platnost QR kódu už skončila.');
-      return;
-    }
+// Časové okno (porovnávej vždy v ms; payload může být v sekundách i ms)
+const now = Date.now();
+
+const toMs = (ts) => {
+  ts = Number(ts || 0);
+  // pokud je to v sekundách (cca 1e9), převedeme na ms; ms jsou cca 1e12+
+  return ts && ts < 1e12 ? ts * 1000 : ts;
+};
+
+const fromMs = toMs(P.fromTs);
+const toMs_  = toMs(P.toTs);
+
+if (fromMs && now < fromMs){
+  alert('Testový mód ještě není aktivní.');
+  return;
+}
+if (toMs_ && now > toMs_){
+  alert('Platnost QR kódu už skončila.');
+  return;
+}
+
 
     // Jednorázový token (z QR). Když chybí, použijeme den+kód.
     const day = String(P.day || '').trim();
@@ -3548,5 +3557,6 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
