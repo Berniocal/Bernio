@@ -216,9 +216,7 @@ function renderRoster(data){
     // - locked=true
     // - violations>0
     // - lastReason v {hidden, pagehide, offline}
-    
-    const reason = String(p.lastReason || '').toLowerCase();
-
+      
     // Detekce porušení (okamžitě, i na 1 s):
     // - explicitně z klienta: hidden/pagehide/offline
     // - nebo serverem: locked, visible=false, online=false, violations>0
