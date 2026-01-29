@@ -110,7 +110,15 @@
     </div>
 
     <div class="used-block">
-      <div class="hint">Přihlášení studenti pro kód <b id="curCode">—</b>:</div>
+      <div class="hint">
+        Přihlášení studenti pro kód <b id="curCode">—</b>:
+        <span style="float:right; font-size:13px">
+          <a id="shareLink" href="#" target="_blank" style="color:#38bdf8;text-decoration:underline;display:none">otevřít na jiném PC</a>
+          <button id="copyLink" type="button" style="margin-left:8px;display:none;padding:4px 8px;border-radius:8px;border:1px solid var(--edge);background:#0b1426;color:#e5edff;cursor:pointer">
+            Kopírovat odkaz
+          </button>
+        </span>
+      </div>
       <div id="roster" class="list">—</div>
     </div>
 
@@ -138,6 +146,39 @@ const codeEl=$('code'), genBtn=$('gen'), usedEl=$('used'), qrCanvas=$('qrcanvas'
 
 function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
 function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
+
+
+/* ===== Sdílený odkaz pro zobrazení rosteru na jiném PC =====
+   Odkaz obsahuje ?code=ABC, takže ho stačí otevřít kdekoliv (učebna, jiný prohlížeč).
+   GDPR: žádná data o zařízení, jen kód v URL (stejně jako je na QR). */
+function updateShareLink(code){
+  const a = document.getElementById('shareLink');
+  const b = document.getElementById('copyLink');
+  if(!a || !b) return;
+
+  if(!code){
+    a.style.display = 'none';
+    b.style.display = 'none';
+    return;
+  }
+
+  const u = new URL(location.href);
+  u.searchParams.set('code', code);
+
+  a.href = u.toString();
+  a.style.display = 'inline';
+  b.style.display = 'inline';
+
+  b.onclick = async () => {
+    try{
+      await navigator.clipboard.writeText(u.toString());
+      showToast('Odkaz zkopírován', 'ok');
+    }catch(_){
+      // fallback, když clipboard není povolen
+      prompt('Zkopíruj odkaz:', u.toString());
+    }
+  };
+}
 
 function showToast(msg, kind='ok'){
   toastEl.textContent = msg;
@@ -378,6 +419,7 @@ async function generate(){
 
     currentCode = code;
     $('curCode').textContent = currentCode;
+    updateShareLink(currentCode);
     try{ localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode); }catch(_){}
     if (rosterTimer) clearInterval(rosterTimer);
     rosterTimer = setInterval(pollRoom, 1000);
@@ -419,6 +461,7 @@ async function generate(){
 
   currentCode = code;
   $('curCode').textContent = currentCode;
+    updateShareLink(currentCode);
   try{ localStorage.setItem(TEACHER_LAST_CODE_KEY, currentCode); }catch(_){}
 
   // QR vždy obsahuje {payload:"...json..."}
@@ -468,11 +511,28 @@ genBtn.addEventListener('click', generate);
     drawQR(JSON.stringify({ payload: JSON.stringify(p) })).catch(()=>{});
     currentCode = p.code;
     $('curCode').textContent = currentCode;
+    updateShareLink(currentCode);
 
     if (rosterTimer) clearInterval(rosterTimer);
     rosterTimer = setInterval(pollRoom, 1000);
     pollRoom();
   }
+})();
+
+/* ===== Otevření teacher.html na jiném PC přes URL ?code=ABC ===== */
+(function initFromUrl(){
+  const p = new URL(location.href).searchParams;
+  const urlCode = normalizeCode(p.get('code') || '');
+  if(urlCode.length !== 3) return;
+
+  // Přepni aktuální kód na ten z URL a začni pollovat roster
+  currentCode = urlCode;
+  $('curCode').textContent = currentCode;
+  updateShareLink(currentCode);
+
+  if (rosterTimer) clearInterval(rosterTimer);
+  rosterTimer = setInterval(pollRoom, 1000);
+  pollRoom();
 })();
 refreshUsed();
 </script>
