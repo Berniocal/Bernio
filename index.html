@@ -369,34 +369,46 @@ async function confirmPinnedMode(){
     box.style.fontFamily = 'system-ui, sans-serif';
     box.style.boxShadow = '0 20px 50px rgba(0,0,0,.6)';
 
-    box.innerHTML = `
-      <div style="font-size:16px;font-weight:700;margin-bottom:10px">
-        Před zahájením testu
-      </div>
-      <div style="font-size:14px;line-height:1.5;margin-bottom:14px">
-        Musí být zapnutý:
-        <ul style="margin:8px 0 8px 18px">
-          <li>Android: <b>Připnutí aplikace</b></li>
-          <li>iPhone/iPad: <b>Asistovaný přístup</b></li>
-        </ul>
-        Návod najdeš
-        <a href="https://berniocal.github.io/Bernio/navod"
-           target="_blank"
-           style="color:#38bdf8;text-decoration:underline">zde</a>.
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button id="pin-no"
-          style="padding:8px 12px;border-radius:8px;border:none;
-                 background:#334155;color:#e5edff">
-          Nemám zapnuto
-        </button>
-        <button id="pin-yes"
-          style="padding:8px 12px;border-radius:8px;border:none;
-                 background:#22c55e;color:#022c22;font-weight:700">
-          Mám zapnuto
-        </button>
-      </div>
-    `;
+box.innerHTML = `
+  <div style="font-size:16px;font-weight:700;margin-bottom:10px">
+    Před zahájením testu
+  </div>
+  <div style="font-size:14px;line-height:1.5;margin-bottom:14px">
+    Musí být zapnutý:
+    <ul style="margin:8px 0 8px 18px">
+      <li>
+        <b>Android:</b> Připnutí aplikace<br>
+        <span style="font-size:13px;opacity:.9">
+          – zapnuté <b>„Zamknout telefon po odepnutí“</b>
+        </span>
+      </li>
+      <li style="margin-top:6px">
+        <b>iPhone / iPad:</b> Asistovaný přístup<br>
+        <span style="font-size:13px;opacity:.9">
+          – <b>zapnutý kód (Passcode)</b><br>
+          – <b>vypnutý časovač</b>
+        </span>
+      </li>
+    </ul>
+    Návod najdeš
+    <a href="https://berniocal.github.io/Bernio/navod"
+       target="_blank"
+       style="color:#38bdf8;text-decoration:underline">zde</a>.
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end">
+    <button id="pin-no"
+      style="padding:8px 12px;border-radius:8px;border:none;
+             background:#334155;color:#e5edff">
+      Nemám zapnuto
+    </button>
+    <button id="pin-yes"
+      style="padding:8px 12px;border-radius:8px;border:none;
+             background:#22c55e;color:#022c22;font-weight:700">
+      Mám zapnuto
+    </button>
+  </div>
+`;
+
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -3764,6 +3776,7 @@ function endExamScan(){   QR.start('END'); }
 </script>
 </body>
 </html>
+
 
 
 
