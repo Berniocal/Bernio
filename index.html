@@ -1672,10 +1672,10 @@ function smartDeleteExponentBlock(){
 const COMPOSITE_TOKENS = [
   'ln(', 'log(', 'sqrt(', 'cbrt(', 'pow10(', 'exp(', 'root(', 'abs(', 'ceil(', 'floor(', 'inv(',
   'Pol(', 'Rec(',
+  'Ans',
   'sin ', 'cos ', 'tan ', 'asin ', 'acos ', 'atan ',
   'sinh ', 'cosh ', 'tanh ', 'asinh ', 'acosh ', 'atanh ',
-  'fact('
-];
+  'fact('];
 
 // najdi token končící těsně před kurzorem
 function matchCompositeBeforeCursor(raw, cursor){
@@ -2524,10 +2524,44 @@ s = autoCloseUnary(s);
 
 
 function autoCloseUnary(s){
+  // Unární funkce – nově i trig (kvůli "sin(Ans" bez uzávorkování)
   const unary=[
-    // !!! bez trig funkcí !!!
-    'sqrt','cbrt','log','ln','exp','pow10','abs','ceil','floor','inv','Rnd'
+    'sqrt','cbrt','log','ln','exp','pow10','abs','ceil','floor','inv','Rnd',
+    'sin','cos','tan','asin','acos','atan',
+    'sinh','cosh','tanh','asinh','acosh','atanh'
   ];
+
+  function scanTerm(from){
+    let k = from;
+    // povolíme případné úvodní znaménko
+    if (s[k] === '+' || s[k] === '-') k++;
+
+    let depth = 0;
+    while (k < s.length){
+      const ch = s[k];
+
+      // konec argumentu na top-level
+      if (depth === 0 && (ch === '+' || ch === '-' || ch === ',')) break;
+
+      // závorka: buď konec argumentu (pokud je to uzávorka našeho volání),
+      // nebo součást termu (vnořená)
+      if (ch === ')'){
+        if (depth === 0) break;
+        depth--;
+        k++; 
+        continue;
+      }
+      if (ch === '('){
+        depth++;
+        k++;
+        continue;
+      }
+
+      k++;
+    }
+    return k;
+  }
+
   let out='', i=0;
 
   while(i<s.length){
@@ -2537,6 +2571,7 @@ function autoCloseUnary(s){
 
     const open = i + name.length;
 
+    // pokud už je kompletně uzavřeno, jen přepošli
     let depth=0, j=open;
     if(s[open]==='('){
       depth=1; j=open+1;
@@ -2548,22 +2583,27 @@ function autoCloseUnary(s){
       if(depth===0){ out += s.slice(i, j); i = j; continue; }
     }
 
+    // není uzavřeno → auto-dovři podle "term" pravidla
     out += name+'(';
-    i = open+1;
-    let k=i;
+    i = open+1;               // pozice za '('
+    const k = scanTerm(i);
 
-    if(s[k]=='+'||s[k]=='-') k++;
-    while(k<s.length && /[0-9.]/.test(s[k])) k++;
-    while(k<s.length && (s[k]==='°'||s[k]==='′'||s[k]==='″')) k++;
-    if((s[k]==='E'||s[k]==='e') && /[-+0-9]/.test(s[k+1])){
-      k++; if(s[k]=='+'||s[k]=='-') k++;
-      while(k<s.length && /[0-9]/.test(s[k])) k++;
+    if(k>=s.length){
+      out += s.slice(i,k)+')';
+      i = k;
+    } else if(s[k]===')'){
+      // narazili jsme na existující ')', která zavírá toto volání
+      out += s.slice(i,k+1);
+      i = k+1;
+    } else if('+-*/,'.includes(s[k]) || s[k]==='-'){
+      // + / - / , ukončí argument (operátor zůstane venku)
+      out += s.slice(i,k)+')'+s[k];
+      i = k+1;
+    } else {
+      // fallback – posuň se o znak (abychom se nezacyklili)
+      out += s[i];
+      i++;
     }
-
-    if(k>=s.length){ out += s.slice(i,k)+')'; i=k; }
-    else if(s[k]===')'){ out += s.slice(i,k+1); i=k+1; }
-    else if('+-*/^,'.includes(s[k])){ out += s.slice(i,k)+')'+s[k]; i=k+1; }
-    else { out += s[i]; i++; }
   }
   return out;
 }
@@ -2645,10 +2685,33 @@ function applyImplicitTrig(s){
 }
 
 function autoCloseRoot(s){
+  function scanUntil(from, stopChars){
+    let k = from;
+    if (s[k] === '+' || s[k] === '-') k++;
+    let depth = 0;
+    while (k < s.length){
+      const ch = s[k];
+
+      if (depth === 0 && stopChars.includes(ch)) break;
+
+      if (ch === ')'){
+        if (depth === 0) break;
+        depth--; k++; continue;
+      }
+      if (ch === '('){
+        depth++; k++; continue;
+      }
+      k++;
+    }
+    return k;
+  }
+
   let out='', i=0;
   while(i<s.length){
     if(s.startsWith('root(', i)){
       const open = i + 4;
+
+      // pokud je už uzavřené root(...), nech být
       let depth=1, j=open+1;
       while(j<s.length && depth>0){
         if(s[j]==='(') depth++;
@@ -2657,30 +2720,35 @@ function autoCloseRoot(s){
       }
       if(depth===0){ out += s.slice(i, j); i = j; continue; }
 
+      // jinak: root( <index> , <radicand> ) s auto-dovíráním
       out += 'root(';
       i = open+1;
 
-      let a=i;
-      if(s[a]=='+'||s[a]=='-') a++;
-      while(a<s.length && /[0-9.]/.test(s[a])) a++;
-      if((s[a]==='E'||s[a]==='e') && /[-+0-9]/.test(s[a+1])){
-        a++; if(s[a]=='+'||s[a]=='-') a++; while(a<s.length && /[0-9]/.test(s[a])) a++;
+      // index: do čárky
+      const aEnd = scanUntil(i, [',', ')']);
+      if (s[aEnd] !== ','){
+        // není kompletní index, posuň se bezpečně
+        out += s[i];
+        i++;
+        continue;
       }
-      if(s[a]!==','){ out+=s[i]; i++; continue; }
-      out += s.slice(i, a+1);
-      i = a+1;
+      out += s.slice(i, aEnd+1);
+      i = aEnd+1;
 
-      let b=i;
-      if(s[b]=='+'||s[b]=='-') b++;
-      while(b<s.length && /[0-9.]/.test(s[b])) b++;
-      if((s[b]==='E'||s[b]==='e') && /[-+0-9]/.test(s[b+1])){
-        b++; if(s[b]=='+'||s[b]=='-') b++; while(b<s.length && /[0-9]/.test(s[b])) b++;
+      // radicand: term (ukončuje + / - / , / ) na top-level; * / ^ zůstávají uvnitř
+      const bEnd = scanUntil(i, ['+', '-', ',', ')']);
+
+      if(bEnd>=s.length){
+        out += s.slice(i,bEnd) + ')';
+        i = bEnd;
+      } else if(s[bEnd]===')'){
+        out += s.slice(i,bEnd+1);
+        i = bEnd+1;
+      } else {
+        // operátor venku
+        out += s.slice(i,bEnd) + ')' + s[bEnd];
+        i = bEnd+1;
       }
-
-      if(b>=s.length){ out += s.slice(i,b) + ')'; i=b; }
-      else if(s[b]===')'){ out += s.slice(i,b+1); i=b+1; }
-      else if('+-*/^,'.includes(s[b])){ out += s.slice(i,b) + ')' + s[b]; i=b+1; }
-      else { out += s[i]; i++; }
       continue;
     }
     out += s[i++];
