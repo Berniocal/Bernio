@@ -241,6 +241,7 @@ body.exam-on .calc{
         <span class="badge auto" id="bAlpha">ALPHA</span>
         <span class="badge auto" id="bHyp">HYP</span>
         <span class="badge always" id="bDRG">DEG</span>
+        <span class="badge auto" id="bMode"></span>
         <span class="badge auto" id="bDMS">DMS</span>
         <span class="badge auto" id="bENG">ENG</span>
         <span class="badge auto" id="bFIX">FIX</span>
@@ -460,7 +461,7 @@ window.addEventListener('orientationchange', fitToViewport);
 
 /* ===== stav ===== */
 const exprEl=qs('#expr'), resEl=qs('#res');
-const bShift=qs('#bShift'), bAlpha=qs('#bAlpha'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem'),
+const bShift=qs('#bShift'), bAlpha=qs('#bAlpha'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bMode=qs('#bMode'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem'),
       bFIX=qs('#bFIX'), bSCI=qs('#bSCI'), bSTO=qs('#bSTO');
 const calcEl = document.getElementById('calc');
 // marker pro superscript pouze z dedikovaných kláves (Word Joiner)
@@ -499,6 +500,16 @@ function renderModeMenu(){
 
   // ==== NOVÉ MODE stránky ====
   if (state.modeStage === 11) return setMenu(['COMP','SD','REG']);
+  if (state.modeStage === 115) return setMenu(['Lin','Log','Exp']);
+  if (state.modeStage === 116) return setMenu(['Pwr','Inv','Quad']);
+
+  // Statistiky – S-SUM / S-VAR (stránkování přes ◀ ▶)
+  if (state.modeStage === 210) return setMenu(['Σx²','Σx','n']);
+  if (state.modeStage === 211) return setMenu(['Σy²','Σy','Σxy']);
+  if (state.modeStage === 220) return setMenu(['x̄','σx','sx']);
+  if (state.modeStage === 221) return setMenu(['ȳ','σy','sy']);
+  if (state.modeStage === 222) return setMenu(['A','B','r']);
+  if (state.modeStage === 223) return setMenu(['ŷ','x̂₁','x̂₂']);
   if (state.modeStage === 12) return setMenu(['Deg','Rad','Gra']);
 if (state.modeStage === 13) return setMenu(['Fix','Sci','Norm']);
 if (state.modeStage === 130) {
@@ -636,9 +647,10 @@ if (state.modeStage === 142) {
 function handleMenuChoice(digit){
   // === NOVÉ MODE stránky ===
   if (state.modeStage === 11){
-    // COMP / SD / REG – zatím nefunkční → jen zavřít menu
-    state.modeStage = 0; render();
-    return true;
+    if (digit==='1'){ state.calcMode='COMP'; saveCalcMode(); state.modeStage=0; state.resultShown=false; state.resultStr=''; render(); return true; }
+    if (digit==='2'){ state.calcMode='SD';   saveCalcMode(); state.modeStage=0; state.resultShown=false; state.resultStr=''; render(); return true; }
+    if (digit==='3'){ state.modeStage=115; render(); return true; }
+    state.modeStage=0; render(); return true;
   }
   if (state.modeStage === 12){
     // Deg / Rad / Gra – FUNKČNÍ (už máš implementované)
@@ -649,6 +661,59 @@ function handleMenuChoice(digit){
     render();
     return true;
   }
+if (state.modeStage === 115){
+  if      (digit==='1') state.regType='Lin';
+  else if (digit==='2') state.regType='Log';
+  else if (digit==='3') state.regType='Exp';
+  state.calcMode='REG';
+  saveCalcMode();
+  state.modeStage=0; state.resultShown=false; state.resultStr='';
+  render(); return true;
+}
+if (state.modeStage === 116){
+  if      (digit==='1') state.regType='Pwr';
+  else if (digit==='2') state.regType='Inv';
+  else if (digit==='3') state.regType='Quad';
+  state.calcMode='REG';
+  saveCalcMode();
+  state.modeStage=0; state.resultShown=false; state.resultStr='';
+  render(); return true;
+}
+
+if (state.modeStage === 210 || state.modeStage === 211){
+  // VÝBĚR STAT položky – nic nepočítej hned, čekej až na "="
+  const labels = (state.modeStage===210)
+    ? { '1':'Σx²', '2':'Σx', '3':'n' }
+    : { '1':'Σy²', '2':'Σy', '3':'Σxy' };
+  const label = labels[digit] || '';
+  state.pendingStat = { stage: state.modeStage, digit, label, rawAtSelect: (state.raw||'') };
+  state.modeStage=0; state.shift=false;
+
+  // po výběru ukázat jen položku (argument se případně dopíše až potom)
+  state.raw=''; state.cursor=0;
+  state.resultShown=false; state.resultStr='';
+  render();
+  return true;
+}
+
+if (state.modeStage >= 220 && state.modeStage <= 223){
+  // VÝBĚR STAT položky – nic nepočítej hned, čekej až na "="
+  const labels = {
+    220: { '1':'x̄', '2':'σx', '3':'sx' },
+    221: { '1':'ȳ', '2':'σy', '3':'sy' },
+    222: { '1':'A', '2':'B', '3':'r' },
+    223: { '1':'ŷ', '2':'x̂₁', '3':'x̂₂' }
+  };
+  const label = (labels[state.modeStage]||{})[digit] || '';
+  state.pendingStat = { stage: state.modeStage, digit, label, rawAtSelect: (state.raw||'') };
+  state.modeStage=0; state.shift=false;
+
+  state.raw=''; state.cursor=0;
+  state.resultShown=false; state.resultStr='';
+  render();
+  return true;
+}
+
 if (state.modeStage === 13){
   // 1=Fix → 130, 2=Sci → 132, 3=Norm → 131
   if (digit === '1'){ state.modeStage = 130; render(); }
@@ -1208,6 +1273,17 @@ let state={
   memVars:{A:null,B:null,C:null,D:null,E:null,F:null,X:null,Y:null,M:null},
   waitingSTO:false,
   waitingRCL:false
+,
+// výpočtový režim
+calcMode:'COMP',      // 'COMP' | 'SD' | 'REG'
+regType:'Lin',        // 'Lin'|'Log'|'Exp'|'Pwr'|'Inv'|'Quad'
+statX:[],             // SD: x-data; REG: x-data
+statY:[]              // REG: y-data (stejně dlouhé jako statX)
+,
+  // UI prefix na zadávacím řádku (např. "n=" po DT)
+  exprPrefix:'',
+  // čekající statistická funkce po SHIFT+1/2 (spustí se až po "=")
+  pendingStat:null
 };
 
 // Při aktivním ALPHA nebo čekání na STO/RCL zachytíme písmena z červených popisek
@@ -1219,6 +1295,9 @@ const NORM_KEY = 'bernio.norm.v1';
 const FIX_KEY = 'bernio.fix.v1';
 const SCI_KEY = 'bernio.sci.v1';
 const VARS_KEY = 'bernio.vars.v1';
+const CALCMODE_KEY = 'bernio.calcmode.v1';
+const REGTYPE_KEY  = 'bernio.regtype.v1';
+
 
 function saveVars(){
   try{ localStorage.setItem(VARS_KEY, JSON.stringify(state.memVars)); }catch(_){}
@@ -1229,6 +1308,23 @@ function loadVars(){
     Object.assign(state.memVars, {A:null,B:null,C:null,D:null,E:null,F:null,X:null,Y:null,M:null}, v||{});
   }catch(_){}
 }
+
+function saveCalcMode(){
+  try{ localStorage.setItem(CALCMODE_KEY, String(state.calcMode||'COMP')); }catch(_){ }
+  try{ localStorage.setItem(REGTYPE_KEY, String(state.regType||'Lin')); }catch(_){ }
+}
+function loadCalcMode(){
+  try{
+    const m = String(localStorage.getItem(CALCMODE_KEY)||'').toUpperCase();
+    if (m==='COMP' || m==='SD' || m==='REG') state.calcMode = m;
+  }catch(_){ }
+  try{
+    const t = String(localStorage.getItem(REGTYPE_KEY)||'');
+    const ok = ['Lin','Log','Exp','Pwr','Inv','Quad'];
+    if (ok.includes(t)) state.regType = t;
+  }catch(_){ }
+}
+
 
 /* === NOVÉ klíče pro perzistenci === */
 const FRAC_PREF_KEY = 'bernio.fracpref.v1';
@@ -1289,6 +1385,7 @@ function ensureModesLoaded(){
   try{
     loadNorm();
     loadFixSci();
+    loadCalcMode();
   }catch(_){}
   _modesLoadedOnce = true;
 }
@@ -1386,14 +1483,33 @@ function render(){
 
 
   bDRG.textContent=state.drg;
+  if (bMode){
+    const m = (state.calcMode||'COMP');
+    if (m==='SD' || m==='REG'){
+      bMode.textContent = m;
+      bMode.classList.add('on');
+    } else {
+      bMode.textContent = '';
+      bMode.classList.remove('on');
+    }
+  }
   calcEl.classList.toggle('shift-on', state.shift);
 
 
   if(renderModeMenu()){
     return;
   }
+  // Prefix na zadávacím řádku (např. "n=" po DT nebo vybraná STAT funkce)
+  const prefix = (state.exprPrefix||'') || (state.pendingStat ? (state.pendingStat.label||'') : '');
   const segs=prettySegments(state.raw);
   let out='', count=0, placed=false;
+
+  // prefix (nezapočítává se do kurzoru)
+  if (prefix){
+    out += '<span class="pref">' + prefix.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>';
+    if (state.raw && state.raw.length) out += '&nbsp;';
+  }
+
   for(const s of segs){
     if(!placed && state.cursor<=count){ out+='<span class="caret">_</span>'; placed=true; }
     out+=s.html; count+=s.len;
@@ -1620,6 +1736,8 @@ function stopExamColorCycle(){
 
 function clearForNewEntry(){
  state.percentSuffix = ''; state.lastPercentCtx = null;            // <<< přidáno
+  // UI prefix (např. n= po DT) se smaže při nové editaci
+  if (state.exprPrefix) state.exprPrefix='';
   if(state.resultShown && !state.editAfterResult){
     state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0;
   }
@@ -1943,11 +2061,37 @@ onPD(qs('#btnMODE'), ()=>{
 
 
 onPD(qs('#btnLeft'),  ()=> {
+  // MODE – stránkování
   if (state.modeStage === 142) { state.modeStage = 141; render(); return; }
+  if (state.modeStage === 116) { state.modeStage = 115; render(); return; }
+  if (state.modeStage === 115) { state.modeStage = 116; render(); return; }
+
+  // Statistiky – stránkování
+  if (state.modeStage === 211) { state.modeStage = 210; render(); return; }
+  if (state.modeStage === 210) { state.modeStage = 211; render(); return; }
+
+  if (state.modeStage === 221) { state.modeStage = 220; render(); return; }
+  if (state.modeStage === 222) { state.modeStage = 221; render(); return; }
+  if (state.modeStage === 223) { state.modeStage = 222; render(); return; }
+  if (state.modeStage === 220) { state.modeStage = 223; render(); return; }
+
   moveCursor(-1);
 });
 onPD(qs('#btnRight'), ()=> {
+  // MODE – stránkování
   if (state.modeStage === 141) { state.modeStage = 142; render(); return; }
+  if (state.modeStage === 115) { state.modeStage = 116; render(); return; }
+  if (state.modeStage === 116) { state.modeStage = 115; render(); return; }
+
+  // Statistiky – stránkování
+  if (state.modeStage === 210) { state.modeStage = 211; render(); return; }
+  if (state.modeStage === 211) { state.modeStage = 210; render(); return; }
+
+  if (state.modeStage === 220) { state.modeStage = 221; render(); return; }
+  if (state.modeStage === 221) { state.modeStage = 222; render(); return; }
+  if (state.modeStage === 222) { state.modeStage = 223; render(); return; }
+  if (state.modeStage === 223) { state.modeStage = 220; render(); return; }
+
   moveCursor(+1);
 });
 
@@ -2147,12 +2291,74 @@ onPD(qs('#btnRCLSTO'), ()=>{
 
 
 onPD(qs('#btnENG'),()=>{ state.eng=!state.eng; if(state.resultShown) updateResultView(); render(); });
-onPD(qs('#btnMpm'),()=>{
-  if (wantsAlphaCapture()){ handleAlphaVar('M'); return; }
-  if(state.shift){ state.shift=false; state.memory -= (+state.ans||0); }
-  else { state.memory += (+state.ans||0); }
-  state.memOn = state.memory!==0;
-  render();
+onPD(qs('#btnMpm'), ()=>{
+  // SD/REG: DT (registrace dat). V manuálu je DT na klávese M+.
+  if (!state.shift && !state.alpha && (state.calcMode === 'SD' || state.calcMode === 'REG')) {
+    try{
+      const raw = (state.raw||'').trim();
+      const v = raw ? evalRPN(toRPN(tokenize(raw))) : state.ans;
+      if (!Number.isFinite(v)) throw new Error('bad');
+
+      if (state.calcMode === 'SD') {
+        state.statX.push(+v);
+        state.raw=''; state.cursor=0;
+        state.exprPrefix='n=';
+        state.ans = +state.statX.length;
+        state.lastRes = { type:'num', v:+state.statX.length };
+        state.resultStr = formatNum(+state.statX.length);
+        state.resultShown = true;
+        updateResultView();
+        return;
+      }
+
+      // REG: očekává x,y ve tvaru "x,y"
+      let x=NaN,y=NaN;
+      if (raw.includes(',')) {
+        const parts = raw.split(',');
+        if (parts.length>=2){
+          x = evalRPN(toRPN(tokenize(parts[0].trim())));
+          y = evalRPN(toRPN(tokenize(parts.slice(1).join(',').trim())));
+        }
+      }
+      if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error('bad');
+
+      state.statX.push(+x);
+      state.statY.push(+y);
+
+      state.raw=''; state.cursor=0;
+      state.exprPrefix='n=';
+      state.ans = +state.statX.length;
+      state.lastRes = { type:'num', v:+state.statX.length };
+      state.resultStr = formatNum(+state.statX.length);
+      state.resultShown = true;
+      updateResultView();
+      return;
+
+    }catch(e){
+      state.resultStr='Error';
+      state.resultShown=true;
+      updateResultView();
+      return;
+    }
+  }
+
+  // SHIFT: CL (v SD/REG vymaže statistickou paměť)
+  if (state.shift){
+    state.shift = false;
+    if (state.calcMode === 'SD' || state.calcMode === 'REG') {
+      statClear();
+      state.resultStr=''; state.resultShown=false;
+      render();
+      return;
+    }
+    state.M = 0;
+    state.resultStr=''; state.resultShown=false;
+    render();
+    return;
+  }
+
+  // ALPHA: M
+  handleAlphaVar('M');
 });
 
 
@@ -2356,6 +2562,66 @@ onPD(qs('#btnEq'), ()=>{
     return;
   }
 
+  // čekající STAT výpočet po SHIFT+1/2
+  if (state.pendingStat){
+    const ps = state.pendingStat;
+    state.pendingStat = null;
+
+    let v = NaN;
+
+    try{
+      if (ps.stage === 210){
+        const r = statSumsSD();
+        if (ps.digit==='1') v=r.sx2; else if (ps.digit==='2') v=r.sx; else if (ps.digit==='3') v=r.n;
+      } else if (ps.stage === 211){
+        const r = statSumsREG();
+        if (ps.digit==='1') v=r.sy2; else if (ps.digit==='2') v=r.sy; else if (ps.digit==='3') v=r.sxy;
+      } else if (ps.stage === 220){
+        const r = statVarsSD();
+        if (ps.digit==='1') v=r.xbar; else if (ps.digit==='2') v=r.sig; else if (ps.digit==='3') v=r.s;
+      } else if (ps.stage === 221){
+        const {n,sy,sy2}=statSumsREG();
+        if (n>0){
+          const ybar=sy/n;
+          const sigy=Math.sqrt(Math.max(0,(sy2/n)-ybar*ybar));
+          const sy_s=(n>1)?Math.sqrt(Math.max(0,(sy2-(sy*sy)/n)/(n-1))):NaN;
+          if (ps.digit==='1') v=ybar; else if (ps.digit==='2') v=sigy; else if (ps.digit==='3') v=sy_s;
+        }
+      } else if (ps.stage === 222){
+        const c = statRegCoeffs();
+        if (ps.digit==='1') v=c.A; else if (ps.digit==='2') v=c.B; else if (ps.digit==='3') v=c.r;
+      } else if (ps.stage === 223){
+        // argument: co bylo zadané před výběrem nebo co uživatel napíše po výběru (state.raw),
+        // když nic, vezmi Ans
+        let argRaw = (state.raw||'').trim();
+        if (!argRaw) argRaw = (ps.rawAtSelect||'').trim();
+        let arg = state.ans;
+        if (argRaw){
+          try{ arg = evalRPN(toRPN(tokenize(argRaw))); }catch(_){ arg = NaN; }
+        }
+        if (ps.digit==='1') v=statPredictY(arg);
+        else if (ps.digit==='2') v=statPredictX(arg,1);
+        else if (ps.digit==='3') v=statPredictX(arg,2);
+      }
+    }catch(_){
+      v = NaN;
+    }
+
+    state.exprPrefix = ''; // případné n= pryč
+    state.raw=''; state.cursor=0;
+
+    if (!Number.isFinite(v)){
+      state.resultStr='Error';
+      state.resultShown=true;
+      render();
+      return;
+    }
+    state.ans=+v;
+    state.lastRes={type:'num', v:+v};
+    updateResultView();
+    return;
+  }
+
   // běžné "="
   if (state.resultShown && !state.editAfterResult && state.repeat){
     const sym = prettyOp(state.repeat.op);
@@ -2428,17 +2694,151 @@ onPDAll('[data-ins]', el=>{
     return;
   }
 
-  // závorky, čárka, číslice a tečka
-  if (t === '(' || t === ')' || t === ',' || /^[0-9.]$/.test(t)) {
-    insRaw(t);
-    return;
+// závorky, čárka, číslice a tečka
+if (t === '(' || t === ')' || t === ',' || /^[0-9.]$/.test(t)) {
+
+  // Statistiky: SHIFT+1 = S-SUM, SHIFT+2 = S-VAR (jen v SD/REG)
+  if (state.shift && (state.calcMode === 'SD' || state.calcMode === 'REG') && /^[0-9]$/.test(t)) {
+    if (t === '1') { state.shift = false; state.modeStage = 210; render(); return; }
+    if (t === '2') { state.shift = false; state.modeStage = 220; render(); return; }
   }
+
+  insRaw(t);
+  return;
+}
 
   // fallback
   insRaw(t);
 });
 
 function prettyOp(op){ return op==='+'?'+': op==='-'?'−': op==='*'?'×': op==='/'?'÷': op; }
+
+
+function statClear(){
+  state.statX = [];
+  state.statY = [];
+}
+
+function statSumsSD(){
+  const n = state.statX.length;
+  let sx=0, sx2=0;
+  for(const x of state.statX){ sx += x; sx2 += x*x; }
+  return { n, sx, sx2 };
+}
+
+function statVarsSD(){
+  const { n, sx, sx2 } = statSumsSD();
+  if (n<=0) return { n, xbar:NaN, sig:NaN, s:NaN };
+  const xbar = sx / n;
+  const sig = Math.sqrt(Math.max(0, (sx2 / n) - xbar*xbar));
+  const s = (n>1) ? Math.sqrt(Math.max(0, (sx2 - (sx*sx)/n) / (n-1))) : NaN;
+  return { n, xbar, sig, s };
+}
+
+function statSumsREG(){
+  const n = state.statX.length;
+  let sx=0, sx2=0, sy=0, sy2=0, sxy=0, sx3=0, sx4=0, sx2y=0;
+  for(let i=0;i<n;i++){
+    const x=state.statX[i], y=state.statY[i];
+    sx += x; sx2 += x*x; sx3 += x*x*x; sx4 += x*x*x*x;
+    sy += y; sy2 += y*y; sxy += x*y; sx2y += (x*x)*y;
+  }
+  return { n, sx, sx2, sy, sy2, sxy, sx3, sx4, sx2y };
+}
+
+function statLinCoeffsFromSums(n, su, su2, sv, sv2, suv){
+  const den = (n*su2 - su*su);
+  const B = den===0 ? NaN : (n*suv - su*sv)/den;
+  const A = (n===0)?NaN : (sv/n) - B*(su/n);
+  const rDen = Math.sqrt(Math.max(0,(n*su2 - su*su)*(n*sv2 - sv*sv)));
+  const r = (rDen===0) ? NaN : (n*suv - su*sv)/rDen;
+  return { A, B, r };
+}
+
+function statRegCoeffs(){
+  const { n, sx, sx2, sy, sy2, sxy, sx3, sx4, sx2y } = statSumsREG();
+  if (n<=0) return { n, A:NaN, B:NaN, C:NaN, r:NaN, kind:state.regType };
+
+  const kind = state.regType;
+
+  if (kind === 'Quad'){
+    const M = [
+      [n,  sx,  sx2],
+      [sx, sx2, sx3],
+      [sx2,sx3,sx4],
+    ];
+    const b = [sy, sxy, sx2y];
+    const A = [[...M[0], b[0]],[...M[1], b[1]],[...M[2], b[2]]];
+    for(let col=0; col<3; col++){
+      let p=col;
+      for(let r=col+1;r<3;r++) if (Math.abs(A[r][col])>Math.abs(A[p][col])) p=r;
+      if (Math.abs(A[p][col])<1e-15) return { n, A:NaN, B:NaN, C:NaN, r:NaN, kind };
+      if (p!==col){ const tmp=A[p]; A[p]=A[col]; A[col]=tmp; }
+      const piv=A[col][col];
+      for(let c=col;c<4;c++) A[col][c]/=piv;
+      for(let r=0;r<3;r++){
+        if (r===col) continue;
+        const f=A[r][col];
+        for(let c=col;c<4;c++) A[r][c]-=f*A[col][c];
+      }
+    }
+    const AA=A[0][3], BB=A[1][3], CC=A[2][3];
+    return { n, A:AA, B:BB, C:CC, r:NaN, kind };
+  }
+
+  let su=0, su2=0, sv=0, sv2=0, suv=0;
+  for(let i=0;i<n;i++){
+    const x=state.statX[i], y=state.statY[i];
+    let u, v;
+    if (kind==='Lin'){ u=x; v=y; }
+    else if (kind==='Log'){ u=Math.log(x); v=y; }
+    else if (kind==='Exp'){ u=x; v=Math.log(y); }
+    else if (kind==='Pwr'){ u=Math.log(x); v=Math.log(y); }
+    else if (kind==='Inv'){ u=1/x; v=y; }
+    else { u=x; v=y; }
+    su += u; su2 += u*u; sv += v; sv2 += v*v; suv += u*v;
+  }
+  const { A:a, B:b, r } = statLinCoeffsFromSums(n, su, su2, sv, sv2, suv);
+
+  if (kind==='Lin') return { n, A:a, B:b, C:NaN, r, kind };
+  if (kind==='Log') return { n, A:a, B:b, C:NaN, r, kind };
+  if (kind==='Inv') return { n, A:a, B:b, C:NaN, r, kind };
+  if (kind==='Exp') return { n, A:Math.exp(a), B:b, C:NaN, r, kind };
+  if (kind==='Pwr') return { n, A:Math.exp(a), B:b, C:NaN, r, kind };
+  return { n, A:a, B:b, C:NaN, r, kind };
+}
+
+function statPredictY(x){
+  const c = statRegCoeffs();
+  if (c.kind==='Quad') return c.A + c.B*x + c.C*x*x;
+  if (c.kind==='Lin') return c.A + c.B*x;
+  if (c.kind==='Log') return c.A + c.B*Math.log(x);
+  if (c.kind==='Exp') return c.A * Math.exp(c.B*x);
+  if (c.kind==='Pwr') return c.A * Math.pow(x, c.B);
+  if (c.kind==='Inv') return c.A + c.B*(1/x);
+  return NaN;
+}
+
+function statPredictX(y, which=1){
+  const c = statRegCoeffs();
+  if (c.kind==='Quad'){
+    const a=c.C, b=c.B, d=(c.A - y);
+    if (a===0){ return (b===0)?NaN: (y - c.A)/b; }
+    const disc = b*b - 4*a*d;
+    if (disc < 0) return NaN;
+    const s = Math.sqrt(disc);
+    const x1 = (-b + s) / (2*a);
+    const x2 = (-b - s) / (2*a);
+    return (which===2) ? x2 : x1;
+  }
+  if (c.kind==='Lin') return (c.B===0)?NaN : (y - c.A)/c.B;
+  if (c.kind==='Log') return Math.exp((y - c.A)/c.B);
+  if (c.kind==='Exp') return Math.log(y / c.A)/c.B;
+  if (c.kind==='Pwr') return Math.exp((Math.log(y) - Math.log(c.A))/c.B);
+  if (c.kind==='Inv') return c.B / (y - c.A);
+  return NaN;
+}
+
 
 function captureRepeat(tokens){
   const n = tokens.length;
