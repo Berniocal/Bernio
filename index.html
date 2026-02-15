@@ -181,31 +181,10 @@ body.exam-on .calc{
     display:flex;
     align-items:center;
     justify-content:center;
-
-    /* sjednocení velikosti šipek napříč zařízeními */
-    font-size:22px;
-    line-height:1;
-    font-family: system-ui, "Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols2", sans-serif;
-
+    font-size:20px;
     user-select:none;
     -webkit-user-select:none;
     touch-action:manipulation;
-
-    /* efekt stisku jen pro daný trojúhelník */
-    transition: filter .08s ease, transform .08s ease, background-color .08s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  /* ▲▼ bývají opticky menší -> jemně je dorovnáme */
-  .dpad .dpad-hit.up,
-  .dpad .dpad-hit.down{
-    transform: scale(1.12);
-  }
-
-  /* highlight se ořízne clip-pathem, takže svítí jen daný trojúhelník */
-  .dpad .dpad-hit.pressed{
-    background: rgba(0,0,0,.10);
-    filter: brightness(.94);
   }
 /* každá šipka do středu svého trojúhelníku */
 .dpad .dpad-hit.up{
@@ -591,6 +570,8 @@ function renderModeMenu(){
   if (state.modeStage === 11) return setMenu(['COMP','SD','REG']);
   if (state.modeStage === 115) return setMenu(['Lin','Log','Exp']);
   if (state.modeStage === 116) return setMenu(['Pwr','Inv','Quad']);
+  if (state.modeStage === 160) return setMenu(['Mcl','Mode','All']);
+
 
   // Statistiky – S-SUM / S-VAR (stránkování přes ◀ ▶)
   if (state.modeStage === 210) return setMenu(['Σx²','Σx','n']);
@@ -741,6 +722,57 @@ function handleMenuChoice(digit){
     if (digit==='3'){ state.modeStage=115; render(); return true; }
     state.modeStage=0; render(); return true;
   }
+
+  // CLR (SHIFT+MODE)
+  if (state.modeStage === 160){
+    // 1: Mem clear (potvrdit "="), 2: Mode reset, 3: All
+    if (digit==='1'){
+      state.pendingClr = 'Mcl';
+      state.exprPrefix = 'Mem clear';
+      state.raw=''; state.cursor=0;
+      state.resultShown=false; state.resultStr='';
+      state.modeStage=0; state.shift=false;
+      render();
+      return true;
+    }
+    const applyModeDefaults = ()=>{
+      state.calcMode='COMP';
+      state.drg='DEG';
+      state.fix=null; state.sci=null;
+      state.norm=2;
+      state.fracPrefMixed=true;   // a b/c
+      state.fracMixed=true;
+      state.decSep='.';           // Dot
+      saveCalcMode();
+      saveFixSci();
+      saveNorm();
+      saveFracPref();
+      saveDecSep();
+    };
+    const clearStatMem = ()=>{
+      state.statX=[]; state.statY=[];
+      state.sdBrowsePos=null;
+      state.exprPrefix='';
+      state.pendingStat=null;
+      state.pendingClr=null;
+    };
+
+    if (digit==='2'){
+      applyModeDefaults();
+      state.modeStage=0; state.shift=false;
+      ac(false);
+      return true;
+    }
+    if (digit==='3'){
+      clearStatMem();
+      applyModeDefaults();
+      state.modeStage=0; state.shift=false;
+      ac(false);
+      return true;
+    }
+    state.modeStage=0; render(); return true;
+  }
+
   if (state.modeStage === 12){
     // Deg / Rad / Gra – FUNKČNÍ (už máš implementované)
     if      (digit==='1') state.drg='DEG';
@@ -1374,7 +1406,8 @@ statY:[]              // REG: y-data (stejně dlouhé jako statX)
   // UI prefix na zadávacím řádku (např. "n=" po DT)
   exprPrefix:'',
   // čekající statistická funkce po SHIFT+1/2 (spustí se až po "=")
-  pendingStat:null
+  pendingStat:null,
+  pendingClr:null
 };
 
 // Při aktivním ALPHA nebo čekání na STO/RCL zachytíme písmena z červených popisek
@@ -2113,6 +2146,13 @@ function ac(hard=false){
   state.resultShown=false; state.resultStr=''; state.lastRes=null;
   state.editAfterResult=false; document.getElementById('exprWrap').scrollLeft=0;
   state.percentSuffix=''; state.lastPercentCtx=null;               // <<< přidáno
+
+  // SD prohlížení / prefixy pryč
+  state.exprPrefix='';
+  state.sdBrowsePos=null;
+  state.pendingStat=null;
+  state.pendingClr=null;
+
   render();
 }
 
@@ -2140,7 +2180,7 @@ onPD(qs('#btnALPHA'), ()=>{
 });
 
 onPD(qs('#btnMODE'), ()=>{
-  if (state.shift){ state.shift = false; state.ans = 0; ac(true); return; }
+  if (state.shift){ state.shift = false; state.modeStage = 160; render(); return; }
   state.resultShown = false; state.resultStr = '';
 
   // 0 → 11 → 12 → 13 → 14 → (pátý stisk) 0
@@ -2233,21 +2273,6 @@ onPD(qs('#dpadLeft'),  ()=> handleArrowLeft());
 onPD(qs('#dpadRight'), ()=> handleArrowRight());
 onPD(qs('#dpadDown'),  ()=> handleArrowSD(+1));
 onPD(qs('#dpadUp'),    ()=> handleArrowSD(-1));
-
-/* vizuální highlight pro D-pad – jen stisknutý trojúhelník */
-['dpadUp','dpadDown','dpadLeft','dpadRight'].forEach(id=>{
-  const el = document.getElementById(id);
-  if(!el) return;
-
-  el.addEventListener('pointerdown', ()=>{
-    el.classList.add('pressed');
-  }, {passive:true});
-
-  const off = ()=> el.classList.remove('pressed');
-  el.addEventListener('pointerup', off, {passive:true});
-  el.addEventListener('pointercancel', off, {passive:true});
-  el.addEventListener('pointerleave', off, {passive:true});
-});
 
 
 
@@ -2715,6 +2740,25 @@ onPD(qs('#btnEq'), ()=>{
     state.shift = false;
     insRaw('%');              // vlož „%“
     handlePercentImmediate(); // a hned přepočti A×/÷B%
+    return;
+  }
+
+  // čekající CLR (Mem clear) – potvrzení přes "="
+  if (state.pendingClr){
+    const pc = state.pendingClr;
+    state.pendingClr = null;
+
+    if (pc === 'Mcl'){
+      state.statX=[]; state.statY=[];
+      state.sdBrowsePos=null;
+    }
+    // vyčisti displej
+    state.exprPrefix='';
+    state.raw=''; state.cursor=0;
+    state.resultShown=false; state.resultStr=''; state.lastRes=null;
+    state.editAfterResult=false;
+    state.percentSuffix=''; state.lastPercentCtx=null;
+    render();
     return;
   }
 
