@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/Bernio/manifest.webmanifest?v=2025-09-81">
+<link rel="manifest" href="manifest.webmanifest?v=2026-07-06-1">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>  
@@ -460,7 +460,7 @@ box.innerHTML = `
       </li>
     </ul>
     Návod najdeš
-    <a href="https://berniocal.github.io/Bernio/navod"
+    <a href="navod.html"
        target="_blank"
        style="color:#38bdf8;text-decoration:underline">zde</a>.
   </div>
@@ -534,7 +534,7 @@ const bShift=qs('#bShift'), bAlpha=qs('#bAlpha'), bHyp=qs('#bHyp'), bDRG=qs('#bD
 const calcEl = document.getElementById('calc');
 // marker pro superscript pouze z dedikovaných kláves (Word Joiner)
 const SUPMARK = '\u2060';
-const TEACHER_URL = "https://berniocal.github.io/Bernio/teacher.html"; // jediný zdroj pravdy
+const TEACHER_URL = new URL('teacher.html', location.href).href; // jediný zdroj pravdy
 const API_BASE = "https://examqr.jendabernard.workers.dev";
 function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
 
@@ -3987,7 +3987,14 @@ if(k==='%'){ insRaw('%'); handlePercentImmediate(); return; }
 
 <script>
   if ('serviceWorker' in navigator) {
-    const SW_URL = '/Bernio/sw.js?v=2025-09-27b'; // zvyšuj verzi při deployi
+    function getAppBasePath() {
+      const path = location.pathname;
+      if (path.endsWith('/')) return path;
+      return path.slice(0, path.lastIndexOf('/') + 1) || '/';
+    }
+
+    const APP_BASE = getAppBasePath();
+    const SW_URL = `${APP_BASE}sw.js?v=2026-07-06-1`; // zvyšuj verzi při deployi
     const FLAG = 'updateReady';
 
     const ui = {
@@ -4023,13 +4030,13 @@ if(k==='%'){ insRaw('%'); handlePercentImmediate(); return; }
 
     window.addEventListener('load', async () => {
       try {
-        const reg = await navigator.serviceWorker.register(SW_URL, { scope: '/Bernio/' });
+        const reg = await navigator.serviceWorker.register(SW_URL, { scope: APP_BASE });
         
         // Každé spuštění aktivně zkusí najít update
         reg.update().catch(()=>{});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    navigator.serviceWorker.getRegistration()
+    navigator.serviceWorker.getRegistration(APP_BASE)
       .then(reg => reg && reg.update().catch(()=>{}));
   }
 });
@@ -4081,7 +4088,7 @@ document.addEventListener('visibilitychange', () => {
 <!-- QR overlay (statický náhled) -->
 <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;z-index:9999">
   <div style="background:#fff;border-radius:16px;padding:16px;color:#111;text-align:center">
-   <img id="qrImg" src="/Bernio/icons/qr.png?v=2" alt="QR kód" width="280" height="280">
+   <img id="qrImg" src="icons/qr.png?v=2" alt="QR kód" width="280" height="280">
     <div id="qrUrl" style="font:14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto;margin-top:8px;word-break:break-all"></div>
   </div>
 </div>

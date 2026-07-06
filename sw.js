@@ -1,6 +1,6 @@
 // === Bernio SW – 1 listener, scope-safe cesty ===
-const CACHE_STATIC  = 'calc-static-v80';
-const CACHE_RUNTIME = 'calc-runtime-v80';
+const CACHE_STATIC  = 'calc-static-v81';
+const CACHE_RUNTIME = 'calc-runtime-v81';
 
 // Odvoď base-path ze scope (např. "/Bernio/")
 const BASE = new URL(self.registration.scope).pathname.replace(/\/+$/, '/') ;
@@ -13,8 +13,15 @@ const PRECACHE = [
   P('/offline.html'),
   P('/manifest.webmanifest'),
   P('/icons/icon-192.png'),
-  P('/icons/icon-512.png')
+  P('/icons/icon-512.png'),
+  P('/icons/qr.png'),
+  P('/teacher.html'),
+  P('/navod.html')
 ];
+
+async function matchCached(req) {
+  return caches.match(req, { ignoreSearch: true });
+}
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
@@ -59,14 +66,18 @@ self.addEventListener('fetch', (event) => {
       try {
         // zkus síť
         const res = await fetch(req);
-        // ulož index do runtime cache pro příště
+        // ulož aktuální HTML do runtime cache pro příště
         const runtime = await caches.open(CACHE_RUNTIME);
-        runtime.put(P('/index.html'), res.clone());
+        await runtime.put(req, res.clone());
+        if (url.pathname === BASE || url.pathname === P('/index.html')) {
+          await runtime.put(P('/index.html'), res.clone());
+        }
         return res;
       } catch {
-        // síť nejde → vezmi poslední index, případně offline
-        return (await caches.match(P('/index.html'))) ||
-               (await caches.match(P('/offline.html')));
+        // síť nejde → vezmi přesnou stránku, poslední index, případně offline
+        return (await matchCached(req)) ||
+               (await matchCached(P('/index.html'))) ||
+               (await matchCached(P('/offline.html')));
       }
     })());
     return;
@@ -76,7 +87,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin === self.location.origin && req.method === 'GET') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_RUNTIME);
-      const cached = await cache.match(req);
+      const cached = await matchCached(req);
       if (cached) return cached;
 
       try {
