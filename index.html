@@ -3986,6 +3986,133 @@ if(k==='%'){ insRaw('%'); handlePercentImmediate(); return; }
 </script>
 
 <script>
+(() => {
+  const NEVER_KEY = 'bernioInstallNever';
+  const INSTALLED_KEY = 'bernioInstalled';
+  let deferredInstallPrompt = null;
+  let installDialog = null;
+
+  function storageGet(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+
+  function storageSet(key, value) {
+    try { localStorage.setItem(key, value); } catch {}
+  }
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+  }
+
+  function closeInstallDialog() {
+    if (installDialog) {
+      installDialog.remove();
+      installDialog = null;
+    }
+  }
+
+  function installButton(label, background, color) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.style.cssText = [
+      'border:0',
+      'border-radius:10px',
+      'padding:10px 13px',
+      'font-weight:700',
+      'cursor:pointer',
+      `background:${background}`,
+      `color:${color}`
+    ].join(';');
+    return btn;
+  }
+
+  function showInstallDialog() {
+    if (!deferredInstallPrompt || installDialog || storageGet(NEVER_KEY) === '1' || isStandalone()) return;
+
+    installDialog = document.createElement('div');
+    installDialog.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'display:grid',
+      'place-items:center',
+      'background:rgba(15,23,34,.62)',
+      'z-index:99998',
+      'padding:18px'
+    ].join(';');
+
+    const box = document.createElement('div');
+    box.style.cssText = [
+      'width:min(360px,100%)',
+      'background:#f8fafc',
+      'color:#0f1722',
+      'border-radius:16px',
+      'padding:18px',
+      'font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif',
+      'box-shadow:0 24px 70px rgba(0,0,0,.45)'
+    ].join(';');
+
+    const title = document.createElement('div');
+    title.textContent = 'Nainstalovat Bernio?';
+    title.style.cssText = 'font-size:18px;font-weight:800;margin-bottom:8px';
+
+    const text = document.createElement('div');
+    text.textContent = 'Aplikace pak půjde otevřít z plochy a po prvním načtení bude fungovat i offline.';
+    text.style.cssText = 'font-size:14px;line-height:1.45;color:#334155;margin-bottom:16px';
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
+
+    const neverBtn = installButton('Nikdy', '#e2e8f0', '#0f1722');
+    const laterBtn = installButton('Později', '#cbd5e1', '#0f1722');
+    const installBtn = installButton('Instalovat', '#10b981', '#042f2e');
+
+    neverBtn.addEventListener('click', () => {
+      storageSet(NEVER_KEY, '1');
+      closeInstallDialog();
+    });
+
+    laterBtn.addEventListener('click', () => {
+      closeInstallDialog();
+    });
+
+    installBtn.addEventListener('click', async () => {
+      const promptEvent = deferredInstallPrompt;
+      closeInstallDialog();
+      if (!promptEvent) return;
+      deferredInstallPrompt = null;
+      promptEvent.prompt();
+      try {
+        const choice = await promptEvent.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          storageSet(INSTALLED_KEY, '1');
+        }
+      } catch {}
+    });
+
+    actions.append(neverBtn, laterBtn, installBtn);
+    box.append(title, text, actions);
+    installDialog.appendChild(box);
+    document.body.appendChild(installDialog);
+  }
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    if (storageGet(NEVER_KEY) === '1' || isStandalone()) return;
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    showInstallDialog();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    storageSet(INSTALLED_KEY, '1');
+    deferredInstallPrompt = null;
+    closeInstallDialog();
+  });
+})();
+</script>
+
+<script>
   if ('serviceWorker' in navigator) {
     function getAppBasePath() {
       const path = location.pathname;
@@ -3994,7 +4121,7 @@ if(k==='%'){ insRaw('%'); handlePercentImmediate(); return; }
     }
 
     const APP_BASE = getAppBasePath();
-    const SW_URL = `${APP_BASE}sw.js?v=2026-07-06-1`; // zvyšuj verzi při deployi
+    const SW_URL = `${APP_BASE}sw.js?v=2026-07-06-2`; // zvyšuj verzi při deployi
     const FLAG = 'updateReady';
 
     const ui = {
