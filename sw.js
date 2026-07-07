@@ -1,4 +1,5 @@
 // === Bernio SW – 1 listener, scope-safe cesty ===
+const CACHE_PREFIX  = 'calc-';
 const CACHE_STATIC  = 'calc-static-v81';
 const CACHE_RUNTIME = 'calc-runtime-v81';
 
@@ -37,7 +38,7 @@ self.addEventListener('activate', (e) => {
     const keys = await caches.keys();
     await Promise.all(
       keys
-        .filter(k => ![CACHE_STATIC, CACHE_RUNTIME].includes(k))
+        .filter(k => k.startsWith(CACHE_PREFIX) && ![CACHE_STATIC, CACHE_RUNTIME].includes(k))
         .map(k => caches.delete(k))
     );
     await self.clients.claim();
