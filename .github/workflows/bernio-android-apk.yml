@@ -27,6 +27,37 @@ jobs:
           base64 --decode android/build-source.tar.xz.b64 | tar -xJ -C native
           test -f native/app/src/main/java/cz/bernio/kalkulacka/MainActivity.java
 
+      - name: Apply Android 0.1.1 safe-area fix
+        shell: bash
+        run: |
+          cat android/viewport-fit.js >> native/app/src/main/assets/bernio_bridge.js
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('native/app/src/main/java/cz/bernio/kalkulacka/MainActivity.java')
+          s = source.read_text()
+          old = """                android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
+                          view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                          return insets;"""
+          old = old.replace("                          ", "                ")
+          new = """                android.graphics.Insets bars = insets.getInsets(
+                          WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                          if (view.getPaddingLeft() != bars.left || view.getPaddingTop() != bars.top
+                                  || view.getPaddingRight() != bars.right || view.getPaddingBottom() != bars.bottom) {
+                              view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                          }
+                          if (webView != null) {
+                              webView.post(() -> runJs("window.__bernioNativeViewportFit && window.__bernioNativeViewportFit();"));
+                          }
+                          return WindowInsets.CONSUMED;""".replace("                          ", "                ")
+          assert old in s, "Native insets code changed; refusing an unreviewed patch"
+          source.write_text(s.replace(old, new, 1))
+          gradle = Path('native/app/build.gradle')
+          g = gradle.read_text()
+          assert 'versionCode 1' in g and "versionName '0.1.0'" in g
+          gradle.write_text(g.replace('versionCode 1', 'versionCode 2').replace("versionName '0.1.0'", "versionName '0.1.1'"))
+          PY
+          test -s native/app/src/main/assets/bernio_bridge.js
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -49,13 +80,13 @@ jobs:
 
       - name: Prepare APK
         run: |
-          cp native/app/build/outputs/apk/debug/app-debug.apk Bernio-Android-0.1-test.apk
-          sha256sum Bernio-Android-0.1-test.apk
+          cp native/app/build/outputs/apk/debug/app-debug.apk Bernio-Android-0.1.1-test.apk
+          sha256sum Bernio-Android-0.1.1-test.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Bernio-Android-0.1-test-apk
-          path: Bernio-Android-0.1-test.apk
+          name: Bernio-Android-0.1.1-test-apk
+          path: Bernio-Android-0.1.1-test.apk
           retention-days: 30
 
       - name: Publish test APK in GitHub prerelease
@@ -63,10 +94,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create bernio-android-test-0.1.0 \
+          gh release create bernio-android-test-0.1.1 \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
             --prerelease \
-            --title "Bernio Android 0.1 – testovací APK" \
-            --notes "Testovací instalovatelné APK kalkulačky Bernio. 5× AC → QR START → přezdívka → systémové připnutí → test. Toto je testovací build podepsaný dočasným debug klíčem; určený k ověření na telefonu." \
-            Bernio-Android-0.1-test.apk
+            --title "Bernio Android 0.1.1 – oprava spodní navigační lišty" \
+            --notes "Testovací APK: spodní klávesy se automaticky zmenší do bezpečné oblasti nad systémovou navigací. Testový režim i QR zachovány. Toto je testovací build podepsaný dočasným debug klíčem; určený k ověření na telefonu." \
+            Bernio-Android-0.1.1-test.apk
